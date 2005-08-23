@@ -23,6 +23,29 @@ local read_table  = {}
 local write_table = {}
 
 --
+-- Auxiliar functions for inserting and removing an element from a list.
+--
+
+local tmp = {}
+
+local function
+list_insert(list, element)
+	table.insert(list, element)
+	tmp[list] = tmp[list] or {}
+	tmp[list][element] = table.getn(list)
+end
+
+local function
+list_remove(list, element)
+	local index = tmp[list][element]
+	local last = table.remove(list)
+	tmp[list][element] = nil
+	if last == element then return end
+	list[index] = last
+	tmp[list][last] = index
+end
+
+--
 -- Flush the event table. Used by the daemon when forking a new process.
 --
 function
@@ -37,8 +60,8 @@ end
 function
 event.add(sock, callbacks, context)
 	-- Create and save the new event object.
-	if callbacks.read  then table.insert(read_table, sock)  end
-	if callbacks.write then table.insert(write_table, sock) end
+	if callbacks.read  then list_insert(read_table, sock)  end
+	if callbacks.write then list_insert(write_table, sock) end
 	event_panel[sock] = { handlers = callbacks, context = context or {} }
 end
 
@@ -52,9 +75,10 @@ event.del(sock)
 	if context.terminator then context.terminator(sock, context) end
 
 	-- Remove the associated event object.
---	local idx = event_panel[sock].index
---	event_table[idx] = nil
---	event_panel[sock] = nil
+	local callbacks = event_panel[sock].handlers
+	if callbacks.read then list_remove(read_table, sock) end
+	if callbacks.write then list_remove(write_table, sock) end
+	event_panel[sock] = nil
 	sock:close()
 end
 
