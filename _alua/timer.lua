@@ -1,41 +1,50 @@
 -- $Id$
-
--- Copyright (c) 2005 Lab//, PUC-Rio
+--
+-- Copyright (c) 2005 Pedro Martelletto <pedro@ambientworks.net>
 -- All rights reserved.
+--
+-- This file is part of the Alua Project.
+--
+-- As a consequence, to every excerpt of code hereby obtained, the respective
+-- project's licence applies. Detailed information regarding the licence used
+-- in Alua can be found in the LICENCE file provided with this distribution.
 
--- This file is part of ALua. As a consequence, to every excerpt of code
--- hereby obtained, the respective project's licence applies. Detailed
--- information regarding ALua's licence can be found in the LICENCE file.
+-- Timer support. Use LuaTimer to do the hard job, bind an API to Alua.
 
--- Timer functions (optional).
+module("timer")
 
-timercnt = 0
+-- Count and table of active timers.
+active_count, active_table = 0, {}
 
-local timer_tab = {}
-
+--
 -- Add a new timer.
+--
 function
-timeradd(cmd, freq)
+timer.add(cmd, freq)
 	if not luatimer then require("luatimer") end
 	local t, e = luatimer.insertTimer(freq)
 	if not t then return nil, e end
-	timer_tab[t] = cmd
-	timercnt = timercnt + 1
+	active_table[t] = cmd
+	active_count = active_count + 1
 	return t
 end
 
+--
 -- Remove a timer.
+--
 function
-timerdel(t)
+timer.del(t)
 	luatimer.removeTimer(t)
-	timer_tab[t] = nil
-	timercnt = timercnt - 1
+	active_table[t] = nil
+	active_count = active_count - 1
 end
 
--- Poll for timers expirations.
+--
+-- Poll for expirations.
+--
 function
-timerpoll()
+timer.poll()
 	local t = luatimer.timeout()
-	local f = timer_tab[t]
+	local f = active_table[t]
 	if f then f(t) end
 end

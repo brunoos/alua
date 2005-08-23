@@ -108,7 +108,7 @@ loop()
 		-- If we run out of events, it's time to stop.
 		if event.loop() == 0 then return end
 		-- If there are any timers, check for them.
-		if timercnt > 0 then timerpoll() end
+		if timer.active_count > 0 then timer.poll() end
 	end
 end
 
@@ -221,3 +221,7 @@ open(arg)
 
 	return _daemon
 end
+
+-- Provide simple shells for the timer functions.
+alua.timeradd = timer.add
+alua.timerdel = timer.del
