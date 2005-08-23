@@ -1,3 +1,5 @@
+-- $Id$
+
 -- Distributed matrix multiplication, with minimal code sharing.
 -- Written by Pedro Martelletto and Ricardo Costa in March 2005.
 -- Public domain.

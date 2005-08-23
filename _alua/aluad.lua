@@ -1,3 +1,5 @@
+-- $Id$
+
 -- Copyright (c) 2005 Lab//, PUC-Rio
 -- All rights reserved.
 
