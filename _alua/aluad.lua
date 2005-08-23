@@ -287,8 +287,8 @@ process_spawn(sock, context, arg)
 		done = done + 1
 		if done == count then
 			-- Time to send the reply.
-			netio.reply(sock, "spawn", arg, { name = arg.name,
-							  processes = ptab })
+			netio.spawn_reply(sock, "spawn", arg,
+			    { name = arg.name, processes = ptab })
 		end
 	end
 
