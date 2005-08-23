@@ -56,7 +56,7 @@ end
 function
 loop()
 	-- Check for activity in the events sockets.
-	local ractive, wactive = socket.select(read_table, write_table)
+	local ractive, wactive = socket.select(read_table, write_table, 1)
 
 	for _, s in ipairs(ractive) do
 		-- Do the respective callbacks.
