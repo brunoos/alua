@@ -28,7 +28,7 @@ client(host, port, read, write, close, s)
 	end
 
 	if write then
-		local write_callback = function (sock, context) write(sock) end
+		write_callback = function (sock, context) write(sock) end
 	end
 
 	-- Create the event, with the terminator function, if any.
