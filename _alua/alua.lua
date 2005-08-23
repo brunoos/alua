@@ -15,8 +15,8 @@ local aluad = require("aluad")
 local event = require("event")
 local netio = require("netio")
 local utils = require("utils")
-local chans = require("chans")
 local timer = require("timer")
+local channel = require("channel")
 
 -- Export utils.dump() as alua.tostring().
 tostring = utils.dump
@@ -225,3 +225,10 @@ end
 -- Provide simple shells for the timer functions.
 alua.timeradd = timer.add
 alua.timerdel = timer.del
+
+-- Provide simple shells for the channel functions.
+alua.setpattern = channel.setpattern
+alua.getpattern = channel.getpattern
+alua.server = channel.server
+alua.client = channel.server
+alua.close = channel.close
