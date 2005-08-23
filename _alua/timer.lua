@@ -44,7 +44,9 @@ end
 --
 function
 timer.poll()
-	local t = luatimer.timeout()
-	local f = active_table[t]
-	if f then f(t) end
+	local tt = luatimer.timeoutAll()
+	for _, t in tt do
+		local f = active_table[t]
+		if f then f(t) end
+	end
 end
