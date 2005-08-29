@@ -114,11 +114,11 @@ end
 
 -- Terminate a process.
 function
-exit(processes, callback)
+exit(processes, callback, code)
 	-- If no processes were given, terminate the caller.
 	if not processes then
 		daemon_disconnect() -- In case we're still connected.
-		os.exit()
+		os.exit(code)
 	end
 
 	-- Pass the termination call to the given processes.
