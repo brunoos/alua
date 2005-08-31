@@ -1,13 +1,18 @@
 -- $Id$
-
--- Copyright (c) 2005 Lab//, PUC-Rio
+--
+-- Copyright (c) 2005 Pedro Martelletto <pedro@ambientworks.net>
 -- All rights reserved.
+--
+-- This file is part of the Alua Project.
+--
+-- As a consequence, to every excerpt of code hereby obtained, the respective
+-- project's licence applies. Detailed information regarding the licence used
+-- in Alua can be found in the LICENCE file provided with this distribution.
 
--- This file is part of ALua. As a consequence, to every excerpt of code
--- hereby obtained, the respective project's licence applies. Detailed
--- information regarding ALua's licence can be found in the LICENCE file.
+-- This file implements a simple abstraction layer to parse incoming and
+-- prepare outgoing data, according to the protocol used in Alua.
 
--- Functions endorsing the exported API.
+-- This file implements the functions endorsing the exported API.
 module("alua")
 
 -- Encapsulation of external modules.
@@ -103,7 +108,7 @@ end
 
 -- Start processing events coming from the daemon as well as from channels.
 function
-loop()
+alua.loop()
 	while true do
 		-- If we run out of events, it's time to stop.
 		if event.loop() == 0 then return end
@@ -114,7 +119,7 @@ end
 
 -- Terminate a process.
 function
-exit(processes, callback, code)
+alua.exit(processes, callback, code)
 	-- If no processes were given, terminate the caller.
 	if not processes then
 		daemon_disconnect() -- In case we're still connected.
@@ -130,7 +135,7 @@ end
 
 -- Leave an application.
 function
-leave(name, callback)
+alua.leave(name, callback)
 	local leave_callback = function(reply)
 		if reply.status == "ok" then applications[name] = nil end
 		if callback then callback(reply) end
@@ -141,7 +146,7 @@ end
 
 -- Join an application.
 function
-join(name, callback)
+alua.join(name, callback)
 	local join_callback = function(reply)
 		if reply.status == "ok" then applications[name] = true end
 		if callback then callback(reply) end
@@ -152,7 +157,7 @@ end
 
 -- Start a new application.
 function
-start(name, callback)
+alua.start(name, callback)
 	local start_callback = function(reply)
 		if reply.status == "ok" then applications[name] = true end
 		if callback then callback(reply) end
@@ -163,13 +168,13 @@ end
 
 -- Link our daemon to other daemons.
 function
-link(daemons, authfs, callback)
+alua.link(daemons, authfs, callback)
 	command("link", { daemons = daemons, authfs = authfs }, callback)
 end
 
 -- Send a message to a (group of) process(es).
 function
-send(to, msg, callback)
+alua.send(to, msg, callback)
 	-- Send the header, then the message.
 	command("message", { to = to, len = string.len(msg) }, callback)
 	socket:send(msg)
@@ -177,25 +182,25 @@ end
 
 -- Spawn new processes in an application.
 function
-spawn(name, count, callback)
+alua.spawn(name, count, callback)
 	command("spawn", { name = name, count = count }, callback)
 end
 
 -- Query the daemon about a given application.
 function
-query(name, callback)
+alua.query(name, callback)
 	command("query", { name = name }, callback)
 end
 
 -- Create a new daemon.
 function
-create(conf)
+alua.create(conf)
 	return aluad.create(conf)
 end
 
 -- Connect to a daemon.
 function
-connect(hash, authf)
+alua.connect(hash, authf)
 	local _socket, id, e = aluad.connect(hash, "process", authf)
 	if _socket then daemon_connect(_socket, hash, id) end
 	return _socket
@@ -203,7 +208,7 @@ end
 
 -- Open a connection with, or create a new a daemon.
 function
-open(arg)
+alua.open(arg)
 	local _daemon, e = arg, nil
 
 	-- If no argument was given, or it's a table...
