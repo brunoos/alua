@@ -8,7 +8,7 @@
 -- information regarding ALua's licence can be found in the LICENCE file.
 
 -- Main body for the ALua daemon.
-module("aluad")
+module("alua.daemon")
 
 -- Encapsulation of external modules.
 local socket = require("socket")
