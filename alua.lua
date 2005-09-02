@@ -26,14 +26,14 @@ function alua.incoming_msg(sock, context, header)
 	-- Validate the header received.
 	if not header or not header.len or not header.from then
 		print("Invalid packet header received from daemon")
-		-- alua.close()
+		alua.close()
 		return
 	end
 	-- Receive the message.
 	message, e = sock:receive(header.len)
 	if not message then
 		print("Error receiving message from daemon: " .. e)
-		-- alua.close()
+		alua.close()
 		return
 	end
 	-- Load the message into an executable object.
