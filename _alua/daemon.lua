@@ -198,12 +198,15 @@ spawn(context, app, id)
 	-- environment, and fall into the event loop.
 	s1:close()
 	local alua = require("alua")
-
-	alua.daemon_connect(s2, conf.hash, id)
+	alua.applications = {}
 	alua.applications[app.name] = true
 	alua.master = app.master
 	alua.parent = context.id
-
+	alua.socket = s2
+	alua.id = id
+	commands = { ["message"] = alua.incoming_msg }
+	callback = { read = _alua.netio.handler }
+	_alua.event.add(s2, callback, { cmdtab = commands })
 	alua.loop()
 	os.exit()
 end
