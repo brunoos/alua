@@ -217,6 +217,19 @@ alua.open(arg)
 	return _daemon
 end
 
+-- Close the connection with the current daemon.
+function alua.close()
+	-- If we're not connected, error out.
+	if not alua.socket then return nil, "Not connected" end
+	-- Leave every application we are in.
+	for _, app in alua.applications do alua.leave(app) end
+	_alua.event.del(alua.socket)
+	alua.applications = {} -- Reset alua.applications now
+	alua.socket = nil
+	alua.daemon = nil
+	alua.id = nil
+end
+
 -- Prepare the 'alua' table.
 alua.tostring = _alua.utils.dump
 alua.applications = {}
