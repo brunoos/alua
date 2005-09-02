@@ -39,13 +39,6 @@ _alua.utils.dump(obj)
 	return tostring(obj)
 end
 
--- Print information about a bogus packet.
-function
-_alua.utils.bogus(sock, command, body)
-	print(alua.id .. ": Bogus packet received from daemon")
-	print(alua.id .. ": Discarding packet...")
-end
-
 -- Hash an (address, port, id) set.
 function
 _alua.utils.hash(addr, port, id)
