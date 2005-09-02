@@ -20,11 +20,6 @@ require("_alua.timer")
 require("_alua.daemon")
 require("_alua.channel")
 
--- Export utils.dump() as alua.tostring().
-alua.tostring = _alua.utils.dump
--- Export the applications table.
-alua.applications = {}
-
 -- Handler for incoming daemon messages.
 local function
 daemon_message(sock, context, body)
@@ -227,13 +222,15 @@ alua.open(arg)
 	return _daemon
 end
 
+-- Prepare the 'alua' table.
+alua.tostring = _alua.utils.dump
+alua.applications = {}
 -- Provide simple shells for the timer functions.
 alua.timeradd = _alua.timer.add
 alua.timerdel = _alua.timer.del
-
 -- Provide simple shells for the channel functions.
 alua.setpattern = _alua.channel.setpattern
 alua.getpattern = _alua.channel.getpattern
+alua.client = _alua.channel.client
 alua.server = _alua.channel.server
-alua.client = _alua.channel.server
 alua.close = _alua.channel.close
