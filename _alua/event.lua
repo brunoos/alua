@@ -15,7 +15,7 @@
 -- A small and generic event abstraction layer used by both processes and
 -- daemons. Every event has its own context and an associated handler.
 
-module("event")
+module("_alua.event")
 
 local socket = require("socket")
 local event_panel = {}
@@ -49,7 +49,7 @@ end
 -- Flush the event table. Used by the daemon when forking a new process.
 --
 function
-event.flush()
+_alua.event.flush()
 	for s in ipairs(event_panel) do s:close() end
 	read_table, write_table, event_panel  = {}, {}, {}
 end
@@ -58,7 +58,7 @@ end
 -- Add a new event.
 --
 function
-event.add(sock, callbacks, context)
+_alua.event.add(sock, callbacks, context)
 	-- Create and save the new event object.
 	if callbacks.read  then list_insert(read_table, sock)  end
 	if callbacks.write then list_insert(write_table, sock) end
@@ -69,7 +69,7 @@ end
 -- Delete an event.
 --
 function
-event.del(sock)
+_alua.event.del(sock)
 	-- If the event has a terminator, execute it.
 	local context = event_panel[sock].context
 	if context.terminator then context.terminator(sock, context) end
@@ -86,12 +86,12 @@ end
 -- Get the handler and the context of a socket.
 --
 function
-event.get(sock)
+_alua.event.get(sock)
 	return event_panel[sock].handlers, event_panel[sock].context
 end
 
 function
-event.loop()
+_alua.event.loop()
 	-- Check for activity in the events sockets.
 	local ractive, wactive = socket.select(read_table, write_table, 1)
 

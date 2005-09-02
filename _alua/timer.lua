@@ -11,21 +11,21 @@
 
 -- Timer support. Use LuaTimer to do the hard job, bind an API to Alua.
 
-module("timer")
+module("_alua.timer")
 
 -- Count and table of active timers.
-active_count, active_table = 0, {}
+_alua.timer.active_count, _alua.timer.active_table = 0, {}
 
 --
 -- Add a new timer.
 --
 function
-timer.add(cmd, freq)
+_alua.timer.add(cmd, freq)
 	if not luatimer then require("luatimer") end
 	local t, e = luatimer.insertTimer(freq)
 	if not t then return nil, e end
-	active_table[t] = cmd
-	active_count = active_count + 1
+	_alua.timer.active_table[t] = cmd
+	_alua.timer.active_count = _alua.timer.active_count + 1
 	return t
 end
 
@@ -33,20 +33,20 @@ end
 -- Remove a timer.
 --
 function
-timer.del(t)
+_alua.timer.del(t)
 	luatimer.removeTimer(t)
-	active_table[t] = nil
-	active_count = active_count - 1
+	_alua.timer.active_table[t] = nil
+	_alua.timer.active_count = _alua.timer.active_count - 1
 end
 
 --
 -- Poll for expirations.
 --
 function
-timer.poll()
+_alua.timer.poll()
 	local tt = luatimer.timeoutAll()
 	for _, t in tt do
-		local f = active_table[t]
+		local f = _alua.timer.active_table[t]
 		if f then f(t) end
 	end
 end

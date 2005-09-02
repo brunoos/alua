@@ -8,14 +8,14 @@
 -- information regarding ALua's licence can be found in the LICENCE file.
 
 -- Main body for the ALua daemon.
-module("alua.daemon")
+module("_alua.daemon")
 
 -- Encapsulation of external modules.
-local socket = require("socket")
-local event = require("event")
-local netio = require("netio")
-local utils = require("utils")
+require("socket")
 require("posix")
+require("_alua.event")
+require("_alua.netio")
+require("_alua.utils")
 
 local daemons = {}
 local apptable = {}
@@ -89,7 +89,7 @@ process_start(sock, context, arg)
 
 	-- Tell our fellow daemons about this new application.
 	for i, s in daemons do
-		netio.cmd(s, "start", { name = arg.name,
+		_alua.netio.cmd(s, "start", { name = arg.name,
 					 master = context.id })
 	end
 
@@ -108,7 +108,7 @@ msg_delivery(context, dest, header, msg)
 		local socket = app.ptab[dest]
 		if socket then
 			-- Send the header, then the message.
-			netio.cmd(socket, "message", header)
+			_alua.netio.cmd(socket, "message", header)
 			socket:send(msg)
 			return "ok"
 		end
@@ -181,7 +181,7 @@ spawn(context, app, id)
 		s2:close()
 		local new_context = { apptable = { [app.name] = app }, id = id,
 				      cmdtab = process_cmdtab }
-		event.add(s1, { read = netio.handler }, new_context)
+		_alua.event.add(s1, { read = _alua.netio.handler }, new_context)
 
 		-- Associate the process with the application.
 		-- And invalidate the application process cache.
@@ -192,7 +192,7 @@ spawn(context, app, id)
 	end
 
 	s1:close()
-	event.flush() -- Get rid of past events states.
+	_alua.event.flush() -- Get rid of past events states.
 
 	-- Okay, we are the new process. Prepare the 'alua'
 	-- environment, and fall into the event loop.
@@ -226,7 +226,7 @@ spawn_local(context, app, name, callback)
 	if ret.status == "ok" then
 		-- Warn the other daemons about this new process.
 		for _, sock in daemons do
-			netio.cmd(sock, "notify", { app = app.name,
+			_alua.netio.cmd(sock, "notify", { app = app.name,
 						    id = ret.id })
 		end
 	end
@@ -238,7 +238,7 @@ local function
 spawn_forward(hash, app, name, callback)
 	local sock = daemons[hash]
 	fake = true
-	netio.cmd(sock, "spawn", { app = app.name, name = name }, callback)
+	_alua.netio.cmd(sock, "spawn", { app = app.name, name = name }, callback)
 end
 
 -- Spawn switch. Takes care of distributing the processes
@@ -287,7 +287,7 @@ process_spawn(sock, context, arg)
 		done = done + 1
 		if done == count then
 			-- Time to send the reply.
-			netio.spawn_reply(sock, "spawn", arg,
+			_alua.netio.spawn_reply(sock, "spawn", arg,
 			    { name = arg.name, processes = ptab })
 		end
 	end
@@ -333,7 +333,7 @@ process_link(sock, context, arg)
 			reply.daemons[hash] = "Ok"
 			-- Forward the link request, so the remote daemons can
 			-- also create connections between themselves.
-			netio.cmd(daemons[hash], "link", arg.daemons)
+			_alua.netio.cmd(daemons[hash], "link", arg.daemons)
 		end
 	end
 
@@ -437,16 +437,16 @@ function
 connect(hash, mode, authf)
 	if not conf then conf = default_conf end
 	if daemons[hash] then return nil, nil, "Already connected" end
-	local sock, e = socket.connect(utils.unhash(hash))
+	local sock, e = socket.connect(_alua.utils.unhash(hash))
 	if not sock then return nil, nil, e end
 	-- Authenticate synchronously, the channel is not shared at this point.
-	netio.send(sock, "auth", { mode = mode, id = conf.hash })
-	local cmd, reply, e = netio.recv(sock)
+	_alua.netio.send(sock, "auth", { mode = mode, id = conf.hash })
+	local cmd, reply, e = _alua.netio.recv(sock)
 	-- Run an authentication function, if it was provided.
 	if authf then authf(hash, mode, sock) end
 	daemons[hash] = sock
 	if mode == "daemon" then
-		event.add(sock, { read = netio.handler },
+		_alua.event.add(sock, { read = _alua.netio.handler },
 		    { cmdtab = daemon_cmdtab })
 	end
 	return sock, reply.id
@@ -461,7 +461,7 @@ aluad_connection(sock, context)
 	else
 		-- A connection in a raw context can only do 'auth'.
 		local commands = { ["auth"] = proto_auth }
-		event.add(ic, { read = netio.handler }, { cmdtab = commands })
+		_alua.event.add(ic, { read = _alua.netio.handler }, { cmdtab = commands })
 	end
 end
 
@@ -481,7 +481,7 @@ create(uconf)
 	-- Bind our listening socket and get a copy of our hash.
 	local sock, e = socket.bind(conf.addr, conf.port)
 	if not sock then return nil, e end
-	conf.hash = utils.hash(sock:getsockname())
+	conf.hash = _alua.utils.hash(sock:getsockname())
 
 	-- Fork, and dispatch from the calling process.
 	local f, e = posix.fork()
@@ -489,10 +489,10 @@ create(uconf)
 	if f > 0 then return conf.hash end
 
 	-- Add an event for incoming connections.
-	event.add(sock, { read = aluad_connection })
+	_alua.event.add(sock, { read = aluad_connection })
 
 	-- Then loop, as every happy daemon should.
-	while true do event.loop() end
+	while true do _alua.event.loop() end
 end
 
 process_cmdtab = {

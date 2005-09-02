@@ -8,25 +8,22 @@
 -- As a consequence, to every excerpt of code hereby obtained, the respective
 -- project's licence applies. Detailed information regarding the licence used
 -- in Alua can be found in the LICENCE file provided with this distribution.
-
--- This file implements a simple abstraction layer to parse incoming and
--- prepare outgoing data, according to the protocol used in Alua.
-
+--
 -- This file implements the functions endorsing the exported API.
+
 module("alua")
 
--- Encapsulation of external modules.
-local aluad = require("aluad")
-local event = require("event")
-local netio = require("netio")
-local utils = require("utils")
-local timer = require("timer")
-local channel = require("channel")
+require("_alua.daemon")
+require("_alua.event")
+require("_alua.netio")
+require("_alua.utils")
+require("_alua.timer")
+require("_alua.channel")
 
 -- Export utils.dump() as alua.tostring().
-tostring = utils.dump
+alua.tostring = _alua.utils.dump
 -- Export the applications table.
-applications = {}
+alua.applications = {}
 
 -- Handler for incoming daemon messages.
 local function
@@ -34,7 +31,7 @@ daemon_message(sock, context, body)
 	-- Check for packet validity.
 	if not body or not body.len or not body.from then
 		-- Assumes infinite tolerance. May we stop sometime?
-		return utils.bogus(sock, "daemon message", body)
+		return _alua.utils.bogus(sock, "daemon message", body)
 	end
 
 	-- Receive the message.
@@ -51,7 +48,7 @@ daemon_message(sock, context, body)
 	local obj, e = loadstring(message)
 	if not obj then
 		print("Failed to load chunk received from " .. 
-		    utils.dump(body.from) .. ": " .. e)
+		    _alua.utils.dump(body.from) .. ": " .. e)
 		return
 	end
 
@@ -60,7 +57,7 @@ daemon_message(sock, context, body)
 	local okay, e = pcall(obj)
 	if not okay then
 		print("Failed to execute chunk received from " ..
-		    utils.dump(body.from) .. ": " .. e)
+		    _alua.utils.dump(body.from) .. ": " .. e)
 	end
 end
 
@@ -71,7 +68,7 @@ command(type, arg, callback)
 		-- If we are not connected yet, error out.
 		callback({ status = "error", error = "Not connected" })
 	else
-		netio.cmd(socket, type, arg, callback)
+		_alua.netio.cmd(socket, type, arg, callback)
 	end
 end
 
@@ -79,31 +76,32 @@ end
 local function
 daemon_disconnect()
 	-- We are no longer in any application.
-	applications = {}
+	alua.applications = {}
 
 	-- There's no socket to be used.
 	if socket then
-		event.del(socket)
-		socket = nil
+		_alua.event.del(socket)
+		alua.socket = nil
 	end
 
 	-- No daemon associated, and no identification.
-	daemon = nil
-	id = nil
+	alua.daemon = nil
+	alua.id = nil
 end
 
 -- Auxiliary function for connecting to a daemon.
 function
 daemon_connect(_socket, _daemon, _id)
 	-- Okay, we are connected. Prepare the global environment.
-	applications = {}
-	socket = _socket
-	daemon = _daemon
-	id = _id
+	alua.applications = {}
+	alua.socket = _socket
+	alua.daemon = _daemon
+	alua.id = _id
 
 	-- Once we have a daemon, collect events from it.
 	local cmds = { ["message"] = daemon_message }
-	event.add(socket, { read = netio.handler }, { cmdtab = cmds })
+	_alua.event.add(socket, { read = _alua.netio.handler },
+	    { cmdtab = cmds })
 end
 
 -- Start processing events coming from the daemon as well as from channels.
@@ -111,9 +109,11 @@ function
 alua.loop()
 	while true do
 		-- If we run out of events, it's time to stop.
-		if event.loop() == 0 then return end
+		if _alua.event.loop() == 0 then return end
 		-- If there are any timers, check for them.
-		if timer.active_count > 0 then timer.poll() end
+		if _alua.timer.active_count > 0 then
+			_alua.timer.poll()
+		end
 	end
 end
 
@@ -127,7 +127,7 @@ alua.exit(processes, callback, code)
 	end
 
 	-- Pass the termination call to the given processes.
-	send(processes, "alua.exit()", callback)
+	alua.send(processes, "alua.exit()", callback)
 end
 
 -- Functions for managing applications. We need to provide a special callback
@@ -137,7 +137,7 @@ end
 function
 alua.leave(name, callback)
 	local leave_callback = function(reply)
-		if reply.status == "ok" then applications[name] = nil end
+		if reply.status == "ok" then alua.applications[name] = nil end
 		if callback then callback(reply) end
 	end
 
@@ -148,7 +148,7 @@ end
 function
 alua.join(name, callback)
 	local join_callback = function(reply)
-		if reply.status == "ok" then applications[name] = true end
+		if reply.status == "ok" then alua.applications[name] = true end
 		if callback then callback(reply) end
 	end
 
@@ -159,7 +159,7 @@ end
 function
 alua.start(name, callback)
 	local start_callback = function(reply)
-		if reply.status == "ok" then applications[name] = true end
+		if reply.status == "ok" then alua.applications[name] = true end
 		if callback then callback(reply) end
 	end
 
@@ -195,13 +195,13 @@ end
 -- Create a new daemon.
 function
 alua.create(conf)
-	return aluad.create(conf)
+	return _alua.daemon.create(conf)
 end
 
 -- Connect to a daemon.
 function
 alua.connect(hash, authf)
-	local _socket, id, e = aluad.connect(hash, "process", authf)
+	local _socket, id, e = _alua.daemon.connect(hash, "process", authf)
 	if _socket then daemon_connect(_socket, hash, id) end
 	return _socket
 end
@@ -214,12 +214,12 @@ alua.open(arg)
 	-- If no argument was given, or it's a table...
 	if not arg or type(arg) == "table" then
 		-- Then create a new daemon.
-		_daemon, e = aluad.create(arg)
+		_daemon, e = _alua.daemon.create(arg)
 		if not _daemon then return nil, e end
 	end
 
 	-- Now do a connection attempt to it.
-	local _socket, _id, e = aluad.connect(_daemon, "process")
+	local _socket, _id, e = _alua.daemon.connect(_daemon, "process")
 	if not _socket then return nil, e end
 
 	daemon_connect(_socket, _daemon, _id)
@@ -228,12 +228,12 @@ alua.open(arg)
 end
 
 -- Provide simple shells for the timer functions.
-alua.timeradd = timer.add
-alua.timerdel = timer.del
+alua.timeradd = _alua.timer.add
+alua.timerdel = _alua.timer.del
 
 -- Provide simple shells for the channel functions.
-alua.setpattern = channel.setpattern
-alua.getpattern = channel.getpattern
-alua.server = channel.server
-alua.client = channel.server
-alua.close = channel.close
+alua.setpattern = _alua.channel.setpattern
+alua.getpattern = _alua.channel.getpattern
+alua.server = _alua.channel.server
+alua.client = _alua.channel.server
+alua.close = _alua.channel.close

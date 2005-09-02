@@ -8,11 +8,11 @@
 -- information regarding ALua's licence can be found in the LICENCE file.
 
 -- Miscellanea. Stuff that really doesn't belong anywhere else.
-module("utils")
+module("_alua.utils")
 
 -- Auxiliary function used to dump a Lua object.
 function
-dump(obj)
+_alua.utils.dump(obj)
 	-- If the object is a table, dump it recursively.
 	if type(obj) == "table" then
 		local i, v = next(obj)
@@ -24,7 +24,7 @@ dump(obj)
 			if type(i) == "string" then
 				buf = buf .. [[["]] .. i .. [["] = ]]
 			end
-			buf = buf .. dump(v)
+			buf = buf .. _alua.utils.dump(v)
 			i, v = next(obj, i)
 			-- If there's a next object, comma-separate it.
 			if i then buf = buf .. ", " end
@@ -41,14 +41,14 @@ end
 
 -- Print information about a bogus packet.
 function
-bogus(sock, command, body)
+_alua.utils.bogus(sock, command, body)
 	print(alua.id .. ": Bogus packet received from daemon")
 	print(alua.id .. ": Discarding packet...")
 end
 
 -- Hash an (address, port, id) set.
 function
-hash(addr, port, id)
+_alua.utils.hash(addr, port, id)
 	-- We have to work-around a corner case here. The hash is supposed to
 	-- contain valid addresses, that is, addresses that are ready to be
 	-- used by socket.connect(). Unfortunately, "0.0.0.0", returned by
@@ -61,7 +61,7 @@ end
 
 -- Produce a (address, port, id) set out of hash.
 function
-unhash(hash)
+_alua.utils.unhash(hash)
 	local _, i_, addr, port, id = string.find(hash, "(%d.+):(%d+)")
 	return addr, tonumber(port), id
 end
