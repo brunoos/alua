@@ -85,7 +85,6 @@ alua.exit(processes, callback, code)
 		alua.close()
 		os.exit(code)
 	end
-
 	-- Pass the termination call to the given processes.
 	alua.send(processes, "alua.exit()", callback)
 end
@@ -97,10 +96,13 @@ end
 function
 alua.leave(name, callback)
 	local leave_callback = function(reply)
-		if reply.status == "ok" then alua.applications[name] = nil end
-		if callback then callback(reply) end
+		if reply.status == "ok" then
+			alua.applications[name] = nil
+		end
+		if callback then
+			callback(reply)
+		end
 	end
-
 	alua.command("leave", { name = name }, leave_callback)
 end
 
@@ -108,10 +110,13 @@ end
 function
 alua.join(name, callback)
 	local join_callback = function(reply)
-		if reply.status == "ok" then alua.applications[name] = true end
-		if callback then callback(reply) end
+		if reply.status == "ok" then
+			alua.applications[name] = true
+		end
+		if callback then
+			callback(reply)
+		end
 	end
-
 	alua.command("join", { name = name }, join_callback)
 end
 
@@ -119,10 +124,13 @@ end
 function
 alua.start(name, callback)
 	local start_callback = function(reply)
-		if reply.status == "ok" then alua.applications[name] = true end
-		if callback then callback(reply) end
+		if reply.status == "ok" then
+			alua.applications[name] = true
+		end
+		if callback then
+			callback(reply)
+		end
 	end
-
 	alua.command("start", { name = name }, start_callback)
 end
 
