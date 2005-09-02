@@ -16,8 +16,8 @@
 -- daemons. Every event has its own context and an associated handler.
 
 module("_alua.event")
+require("socket")
 
-local socket = require("socket")
 local event_panel = {}
 local read_table  = {}
 local write_table = {}
