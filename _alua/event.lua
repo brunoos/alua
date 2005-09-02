@@ -3,14 +3,14 @@
 -- Copyright (c) 2005 Pedro Martelletto <pedro@ambientworks.net>
 -- All rights reserved.
 --
--- This file is part of the Alua Project.
+-- This file is part of the ALua Project.
 --
 -- As a consequence, to every excerpt of code hereby obtained, the respective
 -- project's licence applies. Detailed information regarding the licence used
--- in Alua can be found in the LICENCE file provided with this distribution.
+-- in ALua can be found in the LICENCE file provided with this distribution.
 
 -- This file implements a simple abstraction layer to parse incoming and
--- prepare outgoing data, according to the protocol used in Alua.
+-- prepare outgoing data, according to the protocol used in ALua.
 
 -- A small and generic event abstraction layer used by both processes and
 -- daemons. Every event has its own context and an associated handler.
