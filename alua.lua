@@ -76,12 +76,13 @@ daemon_connect(_socket, _daemon, _id)
 	    { cmdtab = cmds })
 end
 
--- Start processing events coming from the daemon as well as from channels.
-function
-alua.loop()
+-- The main event loop of an ALua process.
+function alua.loop()
 	while true do
 		-- If we run out of events, it's time to stop.
-		if _alua.event.loop() == 0 then return end
+		if _alua.event.loop() == 0 then
+			return
+		end
 		-- If there are any timers, check for them.
 		if _alua.timer.active_count > 0 then
 			_alua.timer.poll()
