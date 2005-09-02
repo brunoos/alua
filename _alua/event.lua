@@ -22,9 +22,7 @@ local event_panel = {}
 local read_table  = {}
 local write_table = {}
 
---
 -- Auxiliar functions for inserting and removing an element from a list.
---
 
 local tmp = {}
 
@@ -45,31 +43,22 @@ list_remove(list, element)
 	tmp[list][last] = index
 end
 
---
 -- Flush the event table. Used by the daemon when forking a new process.
---
-function
-_alua.event.flush()
+function _alua.event.flush()
 	for s in ipairs(event_panel) do s:close() end
 	read_table, write_table, event_panel  = {}, {}, {}
 end
 
---
 -- Add a new event.
---
-function
-_alua.event.add(sock, callbacks, context)
+function _alua.event.add(sock, callbacks, context)
 	-- Create and save the new event object.
 	if callbacks.read  then list_insert(read_table, sock)  end
 	if callbacks.write then list_insert(write_table, sock) end
 	event_panel[sock] = { handlers = callbacks, context = context or {} }
 end
 
---
 -- Delete an event.
---
-function
-_alua.event.del(sock)
+function _alua.event.del(sock)
 	-- If the event has a terminator, execute it.
 	local context = event_panel[sock].context
 	if context.terminator then context.terminator(sock, context) end
@@ -82,16 +71,12 @@ _alua.event.del(sock)
 	sock:close()
 end
 
---
 -- Get the handler and the context of a socket.
---
-function
-_alua.event.get(sock)
+function _alua.event.get(sock)
 	return event_panel[sock].handlers, event_panel[sock].context
 end
 
-function
-_alua.event.loop()
+function _alua.event.loop()
 	-- Check for activity in the events sockets.
 	local ractive, wactive = socket.select(read_table, write_table, 1)
 
