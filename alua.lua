@@ -11,7 +11,7 @@
 --
 -- This file implements the functions endorsing the exported API.
 
-module("alua")
+alua = {}
 
 require("_alua.event")
 require("_alua.netio")
@@ -55,9 +55,11 @@ end
 function alua.command(type, arg, callback)
 	if not alua.socket then
 		-- If we are not connected yet, error out.
-		callback({ status = "error", error = "Not connected" })
+		if callback then
+			callback({ status = "error", error = "Not connected" })
+		end
 	else
-		_alua.netio.cmd(socket, type, arg, callback)
+		_alua.netio.cmd(alua.socket, type, arg, callback)
 	end
 end
 
@@ -150,7 +152,7 @@ function
 alua.send(to, msg, callback)
 	-- Send the header, then the message.
 	alua.command("message", { to = to, len = string.len(msg) }, callback)
-	socket:send(msg)
+	alua.socket:send(msg)
 end
 
 -- Spawn new processes in an application.
@@ -165,43 +167,40 @@ alua.query(name, callback)
 	alua.command("query", { name = name }, callback)
 end
 
--- Create a new daemon.
-function
-alua.create(conf)
-	return _alua.daemon.create(conf)
-end
-
 -- Connect to a daemon.
-function
-alua.connect(hash, authf)
-	local _socket, id, e = _alua.daemon.connect(hash, "process", authf)
-	if _socket then daemon_connect(_socket, hash, id) end
-	return _socket
+function alua.connect(daemon, auth_callback)
+	local socket, commands, callback, id, e
+	-- If we're already connected, error out.
+	if alua.socket then return nil, "Already connected" end
+	-- Otherwise, try connecting.
+	socket, id, e = _alua.daemon.connect(daemon, "process", auth_callback)
+	if not socket then return nil, e end
+	-- Okay, we have a daemon. Prepare the environment.
+	alua.socket = socket
+	alua.daemon = daemon
+	alua.id = id
+	-- Collect events from the daemon.
+	commands = { ["message"] = alua.incoming_msg }
+	callback = { read = _alua.netio.handler }
+	_alua.event.add(socket, callback, { cmdtab = commands })
+	return daemon
 end
 
 -- Open a connection with, or create a new a daemon.
-function
-alua.open(arg)
-	local _daemon, e = arg, nil
-
-	-- If no argument was given, or it's a table...
+function alua.open(arg)
+	local daemon, e
+	-- If there's no argument, or it's a table, then create a new daemon.
 	if not arg or type(arg) == "table" then
-		-- Then create a new daemon.
-		_daemon, e = _alua.daemon.create(arg)
-		if not _daemon then return nil, e end
+		daemon, e = _alua.daemon.create(arg)
+		if not daemon then return nil, e end
 	end
-
 	-- Now do a connection attempt to it.
-	local _socket, _id, e = _alua.daemon.connect(_daemon, "process")
-	if not _socket then return nil, e end
-
-	daemon_connect(_socket, _daemon, _id)
-
-	return _daemon
+	return alua.connect(daemon or arg)
 end
 
 -- Close the connection with the current daemon.
-function alua.close()
+function alua.close(arg)
+	if arg then return _alua.channel.close(arg) end
 	-- If we're not connected, error out.
 	if not alua.socket then return nil, "Not connected" end
 	-- Leave every application we are in.
@@ -214,6 +213,7 @@ function alua.close()
 end
 
 -- Prepare the 'alua' table.
+alua.create = _alua.daemon.create
 alua.tostring = _alua.utils.dump
 alua.applications = {}
 -- Provide simple shells for the timer functions.
@@ -224,4 +224,5 @@ alua.setpattern = _alua.channel.setpattern
 alua.getpattern = _alua.channel.getpattern
 alua.client = _alua.channel.client
 alua.server = _alua.channel.server
-alua.close = _alua.channel.close
+
+return alua
