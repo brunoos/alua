@@ -52,9 +52,8 @@ function alua.incoming_msg(sock, context, header)
 end
 
 -- Auxiliary function for issuing commands to the daemon.
-local function
-command(type, arg, callback)
-	if not socket then
+function alua.command(type, arg, callback)
+	if not alua.socket then
 		-- If we are not connected yet, error out.
 		callback({ status = "error", error = "Not connected" })
 	else
@@ -131,7 +130,7 @@ alua.leave(name, callback)
 		if callback then callback(reply) end
 	end
 
-	command("leave", { name = name }, leave_callback)
+	alua.command("leave", { name = name }, leave_callback)
 end
 
 -- Join an application.
@@ -142,7 +141,7 @@ alua.join(name, callback)
 		if callback then callback(reply) end
 	end
 
-	command("join", { name = name }, join_callback)
+	alua.command("join", { name = name }, join_callback)
 end
 
 -- Start a new application.
@@ -153,33 +152,33 @@ alua.start(name, callback)
 		if callback then callback(reply) end
 	end
 
-	command("start", { name = name }, start_callback)
+	alua.command("start", { name = name }, start_callback)
 end
 
 -- Link our daemon to other daemons.
 function
 alua.link(daemons, authfs, callback)
-	command("link", { daemons = daemons, authfs = authfs }, callback)
+	alua.command("link", { daemons = daemons, authfs = authfs }, callback)
 end
 
 -- Send a message to a (group of) process(es).
 function
 alua.send(to, msg, callback)
 	-- Send the header, then the message.
-	command("message", { to = to, len = string.len(msg) }, callback)
+	alua.command("message", { to = to, len = string.len(msg) }, callback)
 	socket:send(msg)
 end
 
 -- Spawn new processes in an application.
 function
 alua.spawn(name, count, callback)
-	command("spawn", { name = name, count = count }, callback)
+	alua.command("spawn", { name = name, count = count }, callback)
 end
 
 -- Query the daemon about a given application.
 function
 alua.query(name, callback)
-	command("query", { name = name }, callback)
+	alua.command("query", { name = name }, callback)
 end
 
 -- Create a new daemon.
