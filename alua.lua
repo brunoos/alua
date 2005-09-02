@@ -21,35 +21,30 @@ require("_alua.daemon")
 require("_alua.channel")
 
 -- Handler for incoming daemon messages.
-local function
-daemon_message(sock, context, body)
-	-- Check for packet validity.
-	if not body or not body.len or not body.from then
-		-- Assumes infinite tolerance. May we stop sometime?
-		return _alua.utils.bogus(sock, "daemon message", body)
-	end
-
-	-- Receive the message.
-	local message, e = sock:receive(body.len)
-	if not message then
-		-- Probably a networking error, so we are better
-		-- off discarding the current daemon.
-		print("Error receiving message from daemon: " .. e)
-		daemon_disconnect()
+function alua.incoming_msg(sock, context, header)
+	local message, obj, okay, e
+	-- Validate the header received.
+	if not header or not header.len or not header.from then
+		print("Invalid packet header received from daemon")
+		-- alua.close()
 		return
 	end
-
+	-- Receive the message.
+	message, e = sock:receive(header.len)
+	if not message then
+		print("Error receiving message from daemon: " .. e)
+		-- alua.close()
+		return
+	end
 	-- Load the message into an executable object.
-	local obj, e = loadstring(message)
+	obj, e = loadstring(message)
 	if not obj then
 		print("Failed to load chunk received from " .. 
 		    _alua.utils.dump(body.from) .. ": " .. e)
 		return
 	end
-
-	-- And run it. Since exiting due to an incoming message's fault is not
-	-- really what's wanted, do so in protected mode.
-	local okay, e = pcall(obj)
+	-- And run it.
+	okay, e = pcall(obj)
 	if not okay then
 		print("Failed to execute chunk received from " ..
 		    _alua.utils.dump(body.from) .. ": " .. e)
@@ -94,7 +89,7 @@ daemon_connect(_socket, _daemon, _id)
 	alua.id = _id
 
 	-- Once we have a daemon, collect events from it.
-	local cmds = { ["message"] = daemon_message }
+	local cmds = { ["message"] = alua.incoming_msg }
 	_alua.event.add(socket, { read = _alua.netio.handler },
 	    { cmdtab = cmds })
 end
