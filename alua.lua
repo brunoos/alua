@@ -40,14 +40,14 @@ function alua.incoming_msg(sock, context, header)
 	obj, e = loadstring(message)
 	if not obj then
 		print("Failed to load chunk received from " .. 
-		    _alua.utils.dump(body.from) .. ": " .. e)
+		    _alua.utils.dump(header.from) .. ": " .. e)
 		return
 	end
 	-- And run it.
 	okay, e = pcall(obj)
 	if not okay then
 		print("Failed to execute chunk received from " ..
-		    _alua.utils.dump(body.from) .. ": " .. e)
+		    _alua.utils.dump(header.from) .. ": " .. e)
 	end
 end
 
@@ -59,23 +59,6 @@ function alua.command(type, arg, callback)
 	else
 		_alua.netio.cmd(socket, type, arg, callback)
 	end
-end
-
--- Auxiliary function for disconnecting from a daemon.
-local function
-daemon_disconnect()
-	-- We are no longer in any application.
-	alua.applications = {}
-
-	-- There's no socket to be used.
-	if socket then
-		_alua.event.del(socket)
-		alua.socket = nil
-	end
-
-	-- No daemon associated, and no identification.
-	alua.daemon = nil
-	alua.id = nil
 end
 
 -- Auxiliary function for connecting to a daemon.
@@ -111,7 +94,7 @@ function
 alua.exit(processes, callback, code)
 	-- If no processes were given, terminate the caller.
 	if not processes then
-		daemon_disconnect() -- In case we're still connected.
+		alua.close()
 		os.exit(code)
 	end
 
