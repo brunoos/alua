@@ -150,6 +150,17 @@ _alua.netio.cmd(sock, cmd, arg, callback)
 	_alua.netio.send(sock, cmd, arg)
 end
 
+-- Issue a protocol command, synchronously.
+function _alua.netio.sync(sock, cmd, args)
+	local reply_cmd, reply, e
+	_alua.netio.send(sock, cmd, args)
+	reply_cmd, reply, e = _alua.netio.recv(sock)
+	if not reply_cmd or reply_cmd ~= cmd .. "-reply" then
+		return nil, "Invalid reply for command"
+	end
+	return reply
+end
+
 --
 -- The spawn algorithm needs to be reviewed, so this kludge can be removed.
 --
