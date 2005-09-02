@@ -63,21 +63,6 @@ function alua.command(type, arg, callback)
 	end
 end
 
--- Auxiliary function for connecting to a daemon.
-function
-daemon_connect(_socket, _daemon, _id)
-	-- Okay, we are connected. Prepare the global environment.
-	alua.applications = {}
-	alua.socket = _socket
-	alua.daemon = _daemon
-	alua.id = _id
-
-	-- Once we have a daemon, collect events from it.
-	local cmds = { ["message"] = alua.incoming_msg }
-	_alua.event.add(socket, { read = _alua.netio.handler },
-	    { cmdtab = cmds })
-end
-
 -- The main event loop of an ALua process.
 function alua.loop()
 	while true do
