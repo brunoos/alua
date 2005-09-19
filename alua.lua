@@ -145,9 +145,10 @@ end
 
 -- Send a message to a (group of) process(es).
 function
-alua.send(to, msg, callback)
+alua.send(to, msg, callback, timeout)
 	-- Send the header, then the message.
-	alua.command("message", { to = to, len = string.len(msg) }, callback)
+	alua.command("message", { to = to, len = string.len(msg),
+	    timeout = timeout }, callback)
 	alua.socket:send(msg)
 end
 
