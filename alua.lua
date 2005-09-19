@@ -81,8 +81,7 @@ function alua.loop()
 end
 
 -- Terminate a process.
-function
-alua.exit(processes, callback, code)
+function alua.exit(processes, callback, code)
 	-- If no processes were given, terminate the caller.
 	if not processes then
 		alua.close()
@@ -96,8 +95,7 @@ end
 -- so that we can change the 'applications' table accordingly.
 
 -- Leave an application.
-function
-alua.leave(name, callback)
+function alua.leave(name, callback)
 	local leave_callback = function(reply)
 		if reply.status == "ok" then
 			alua.applications[name] = nil
@@ -110,8 +108,7 @@ alua.leave(name, callback)
 end
 
 -- Join an application.
-function
-alua.join(name, callback)
+function alua.join(name, callback)
 	local join_callback = function(reply)
 		if reply.status == "ok" then
 			alua.applications[name] = true
@@ -124,8 +121,7 @@ alua.join(name, callback)
 end
 
 -- Start a new application.
-function
-alua.start(name, callback)
+function alua.start(name, callback)
 	local start_callback = function(reply)
 		if reply.status == "ok" then
 			alua.applications[name] = true
@@ -138,14 +134,12 @@ alua.start(name, callback)
 end
 
 -- Link our daemon to other daemons.
-function
-alua.link(daemons, authfs, callback)
+function alua.link(daemons, authfs, callback)
 	alua.command("link", { daemons = daemons, authfs = authfs }, callback)
 end
 
 -- Send a message to a (group of) process(es).
-function
-alua.send(to, msg, callback, timeout)
+function alua.send(to, msg, callback, timeout)
 	-- Send the header, then the message.
 	alua.command("message", { to = to, len = string.len(msg),
 	    timeout = timeout }, callback)
@@ -153,14 +147,12 @@ alua.send(to, msg, callback, timeout)
 end
 
 -- Spawn new processes in an application.
-function
-alua.spawn(name, count, callback)
+function alua.spawn(name, count, callback)
 	alua.command("spawn", { name = name, count = count }, callback)
 end
 
 -- Query the daemon about a given application.
-function
-alua.query(name, callback)
+function alua.query(name, callback)
 	alua.command("query", { name = name }, callback)
 end
 
