@@ -545,3 +545,7 @@ daemon_command_table = {
 	["notify"] = daemon_notify,
 	["message"] = daemon_message,
 }
+
+-- Protect access to the tables above
+_alua.utils.protect(process_command_table, _alua.utils.invalid_command)
+_alua.utils.protect(daemon_command_table, _alua.utils.invalid_command)
