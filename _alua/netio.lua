@@ -17,138 +17,89 @@ module("_alua.netio")
 require("_alua.event")
 require("_alua.utils")
 
---
--- Transform an outgoing '<command>, <argument table>' pair into a string and
--- send it on the given socket.
---
-function
-_alua.netio.send(sock, cmd, arg)
-	sock:send(string.format("%s %s\n", cmd, _alua.utils.dump(arg)))
+-- Transform an outgoing '<mode>, <header>, <arguments>' tuple into a string
+-- and send it on the given socket.
+function _alua.netio.send(sock, mode, header, data)
+	sock:send(string.format("%s = %s, arguments = %s\n", mode,
+	    _alua.utils.dump(header), _alua.utils.dump(data)))
 end
 
---
--- Receive and parse incoming data into a '<command>, <argument table>' pair.
---
-function
-_alua.netio.recv(sock)
+-- Receive and parse incoming data into a '<command>, <arguments>' pair.
+function _alua.netio.recv(sock)
 	-- Read the packet from the socket.
 	local data, e = sock:receive()
-	if not data then return nil, nil, e end
-
-	-- Extract the first token.
-	local i, e, cmd = string.find(data, "^([-%a]+)")
-	if not i then return nil, data, "Invalid command" end
-
-	-- Chop it off the packet.
-	data = string.sub(data, e + 2)
-	data = "return " .. data
-
-	-- And safely load the chunk passed.
+	if not data then return nil end
+	-- Safely load the chunk received.
+	data = "return { " .. data .. " }"
 	local f, e = loadstring(data)
-	if not f then return nil, data, e end
-	setfenv(f, {}); local arg, e = f()
-	if not arg then return nil, data, e end
-
-	return cmd, arg
+	if not f then return nil end
+	setfenv(f, {});
+	return f()
 end
 
 -- Handle an incoming request. Try to find a handler for it, and prepare a
--- reply function to be used by the handler.
-function _alua.netio.request(sock, context, cmd, data)
-	local handler = context.command_table[cmd]
-	if not handler then
-		_alua.netio.send(sock, "error", { value = "Invalid command" } )
-		return
-	end
+-- reply function to be used by the handler. If a timeout was given, set up
+-- a timer for it.
+function _alua.netio.request(sock, context, incoming)
+	local request, arguments = incoming.request, incoming.arguments
+	local timer, timer_expired
 	local reply = function (body)
-		body.sequence_count = data.sequence_count -- Keep state.
-		_alua.netio.send(sock, cmd .. "-reply", body)
+		if timer_expired then return end
+		_alua.netio.send(sock,  "reply", { id = request.id }, body)
+		if timer then _alua.timer.del(timer) end
 	end
-	handler(sock, context, data, reply)
+	local timer_callback = function(t)
+		reply({ status = "error", error = "timeout" })
+		timer_expired = true -- Nullify reply()
+		_alua.timer.del(t)
+	end
+	timer = _alua.timer.add(timer_callback, request.timeout)
+	local handler = context.command_table[request.name]
+	handler(sock, context, arguments, reply)
 end
 
---
 -- Handle an incoming reply.
---
-function
-_alua.netio.reply(context, data)
+function _alua.netio.reply(sock, context, incoming)
+	local reply, arguments = incoming.reply, incoming.arguments
 	-- Try to find a callback we should call.
-	local callback = context.sequence_table[data.sequence_count]
-
-	-- If there's no callback, then something might be wrong.
-	if not callback then
---		print("Warning, asynchronous reply with no callback?")
-		return
-	end
-
+	local callback = context.reqtable[reply.id]
 	-- We have a match, remove the entry from the sequence table.
-	context.sequence_table[data.sequence_count] = nil
-
+	context.reqtable[reply.id] = nil
 	-- If this was our topmost sequence number, decrement it.
-	if data.sequence_count == context.sequence_count - 1 then
-		context.sequence_count = data.sequence_count - 1
+	if reply.id == context.reqcount - 1 then
+		context.reqcount = reply.id - 1
 	end
-
-	-- Hide sequence number from callback.
-	data.sequence_count = nil
-
 	-- Do it, finally.
-	callback(data)
+	if callback then callback(arguments) end
 end
 
---
 -- Generic event handling function. Takes care of the sequence count, which is
 -- needed since we can share multiple instances of asynchronous requests in a
 -- same channel.
---
-function
-_alua.netio.handler(sock, context)
-	-- Receive and parse the message.
-	local cmd, data, e = _alua.netio.recv(sock)
-
-	-- In case of network error, remove the associated event.
-	if not data then _alua.event.del(sock) return end
-
-	-- In case of parse error, return an error message.
-	if not cmd then _alua.netio.send(sock, "error", { value = e } ) return end
-
-	-- Check if the packet is a reply for a request we made.
-	if string.find(cmd, "-reply$") then
-		_alua.netio.reply(context, data)
-	else
-		-- Otherwise, the packet holds an incoming request.
-		_alua.netio.request(sock, context, cmd, data)
-	end
+function _alua.netio.handler(sock, context)
+	local incoming = _alua.netio.recv(sock) or {}
+	if incoming.request then _alua.netio.request(sock, context, incoming)
+	elseif incoming.reply then _alua.netio.reply(sock, context, incoming)
+	else _alua.event.del(sock) end
 end
 
---
 -- Issue a protocol command, asynchronously.
---
-function
-_alua.netio.async(sock, cmd, arg, callback)
+function _alua.netio.async(sock, cmd, arg, callback, timeout)
 	-- Get the socket context.
 	local _, context = _alua.event.get(sock)
-
 	-- Arrange the socket's sequence record.
-	context.sequence_count = context.sequence_count or 0
-	context.sequence_table = context.sequence_table or {}
-
+	context.reqcount = context.reqcount or 0
+	context.reqtable = context.reqtable or {}
 	-- Tag the request with the current sequence count, so that we can
 	-- identify the reply when it arrives (as the channel could be shared).
-	arg.sequence_count = context.sequence_count
-	context.sequence_table[arg.sequence_count] = callback
-	context.sequence_count = context.sequence_count + 1
-
-	_alua.netio.send(sock, cmd, arg)
+	local req = { name = cmd, timeout = timeout, id = context.reqcount }
+	context.reqtable[context.reqcount] = callback
+	context.reqcount = context.reqcount + 1
+	_alua.netio.send(sock, "request", req, arg)
 end
 
 -- Issue a protocol command, synchronously.
 function _alua.netio.sync(sock, cmd, args)
-	local reply_cmd, reply, e
-	_alua.netio.send(sock, cmd, args)
-	reply_cmd, reply, e = _alua.netio.recv(sock)
-	if not reply_cmd or reply_cmd ~= cmd .. "-reply" then
-		return nil, "Invalid reply for command"
-	end
-	return reply
+	_alua.netio.send(sock, "request", { name = cmd }, args)
+	return _alua.netio.recv(sock)
 end

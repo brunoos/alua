@@ -108,6 +108,32 @@ msg_delivery(context, dest, header, msg, callback)
 	end
 end
 
+-- Common code for processes and daemons for sending messages.
+local function message_common(sock, context, header, reply, forwarding)
+	-- If a timeout was given, set up a timer for it.
+	local timer
+	if header.timeout then
+		local timer_callback = function(t)
+			reply({ status = "error", error "timeout" })
+			_alua.timer.del(t)
+		end
+		timer = _alua.timer.add(timer_callback, header.timeout)
+	end
+	-- Read in the message.
+	local msg, e = sock:receive(header.len)
+	-- Once we have it, tag the header with 'from' identification.
+	if not header.from then header.from = context.id end
+	-- Attempt to send the message to each of the requested processes,
+	-- filling the reply table accordingly.
+	if type(header.to) == "table" and not forwarding then
+		for _, dest in header.to do
+			msg_delivery(context, dest, header, msg, reply)
+		end
+	else
+		msg_delivery(context, header.to, header, msg, reply)
+	end
+end
+
 -- Receive a message from a process and deliver it.
 local function
 process_message(sock, context, header, reply, forwarding)
@@ -138,7 +164,6 @@ process_message(sock, context, header, reply, forwarding)
 		end
 	else
 		local reply_callback = function (__reply)
-			table.foreach(__reply, print)
 			_reply[__reply.to] =  { status = __reply.status,
 						error = __reply.error,
 						to = __reply.to }
@@ -447,8 +472,8 @@ connect(hash, mode, authf)
 	local sock, e = socket.connect(_alua.utils.unhash(hash))
 	if not sock then return nil, nil, e end
 	-- Authenticate synchronously, the channel is not shared at this point.
-	_alua.netio.send(sock, "auth", { mode = mode, id = conf.hash })
-	local cmd, reply, e = _alua.netio.recv(sock)
+	local reply, _, e = _alua.netio.sync(sock, "auth", { mode = mode,
+	    id = conf.hash })
 	-- Run an authentication function, if it was provided.
 	if authf then authf(hash, mode, sock) end
 	daemons[hash] = sock
