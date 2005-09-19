@@ -195,23 +195,28 @@ spawn_switch(context, app, name, callback)
 	current_spawn_daemon = next(daemons, current_spawn_daemon)
 end
 
+-- Makes sure a process is in an application.
+function _alua.daemon.verify_process_app(context, appname, reply)
+	local app = _alua.daemon.apptable[appname]
+	if not app then
+		reply({ name = appname, stats = "error",
+			error = "application does not exist" })
+		return nil
+	end
+	if not context.apptable[appname] then
+		reply({ name = appname, status = "error",
+			error = "not in such application" })
+		return nil
+	end
+	return app
+end
+
 -- Spawn new processes. Operates asynchronously.
 local function
 process_spawn(sock, context, arg, reply)
+	local app = _alua.daemon.verify_process_app(context, arg.name, reply)
+	if not app then return end
 	local count
-	-- Make sure the application exists.
-	local app = _alua.daemon.apptable[arg.name]
-	if not app then
-		reply({ name = arg.name, status = "error",
-		        error = "Application does not exist" })
-		return
-	end
-	-- And that the requesting process is in it.
-	if not context.apptable[arg.name] then
-		reply({ name = arg.name, status = "error",
-		        error = "Not in such application" })
-		return
-	end
 	if type(arg.count) == "table" then
 		count = table.getn(arg.count)
 	else
@@ -293,19 +298,8 @@ end
 -- Associate a process with an application.
 local function
 process_join(sock, context, arg, reply)
-	-- Make sure the application exists.
-	local app = _alua.daemon.apptable[arg.name]
-	if not app then
-		reply({ name = arg.name, status = "error",
-		        error = "Application does not exist" })
-		return
-	end
-	-- And that the requesting process is not in it.
-	if context.apptable[arg.name] then
-		reply({ name = arg.name, status = "error",
-			error = "Already in application" })
-		return
-	end
+	local app = _alua.daemon.verify_process_app(context, arg.name, reply)
+	if not app then return end
 	-- Associate the process with the application.
 	context.apptable[arg.name] = app
 	app.ptab[context.id] = sock
@@ -319,19 +313,8 @@ end
 -- Leave an application.
 local function
 process_leave(sock, context, arg, reply)
-	-- Make sure the application exists.
-	local app = _alua.daemon.apptable[arg.name]
-	if not app then
-		reply({ name = arg.name, status = "error",
-			error = "Application does not exist" })
-		return
-	end
-	-- And that the requesting process is in it.
-	if not context.apptable[arg.name] then
-		reply({ name = arg.name, status = "error",
-			error = "Not in such application" })
-		return
-	end
+	local app = _alua.daemon.verify_process_app(context, arg.name, reply)
+	if not app then return end
 	-- Deassociate the process from the application.
 	context.apptable[arg.name] = nil
 	app.ptab[context.id] = nil
