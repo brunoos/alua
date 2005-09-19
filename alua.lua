@@ -21,7 +21,7 @@ require("_alua.daemon")
 require("_alua.channel")
 
 -- Handler for incoming daemon messages.
-function alua.incoming_msg(sock, context, header)
+function alua.incoming_msg(sock, context, header, reply)
 	local message, obj, okay, e
 	-- Validate the header received.
 	if not header or not header.len or not header.from then
@@ -43,6 +43,9 @@ function alua.incoming_msg(sock, context, header)
 		    _alua.utils.dump(header.from) .. ": " .. e)
 		return
 	end
+
+	reply({ to = alua.id, status = "ok" })
+
 	-- And run it.
 	okay, e = pcall(obj)
 	if not okay then

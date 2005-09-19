@@ -92,7 +92,7 @@ end
 
 -- Auxiliary function for delivering a message to a process.
 local function
-msg_delivery(context, dest, header, msg)
+msg_delivery(context, dest, header, msg, callback)
 	-- Look up the destination process in all
 	-- the applications the sender is in.
 	if context.command_table == daemon_command_table then
@@ -102,18 +102,24 @@ msg_delivery(context, dest, header, msg)
 		local socket = app.ptab[dest]
 		if socket then
 			-- Send the header, then the message.
-			_alua.netio.async(socket, "message", header)
+			_alua.netio.async(socket, "message", header, callback)
 			socket:send(msg)
-			return "ok"
 		end
 	end
-
-	return "error", "No such process"
 end
 
 -- Receive a message from a process and deliver it.
 local function
 process_message(sock, context, header, reply, forwarding)
+	local timer
+	-- If a timeout was given, set up a timer for it.
+	if header.timeout then
+		local timer_callback = function(t)
+			reply({ status = "error", error = "timeout" })
+			_alua.timer.del(t)
+		end
+		timer = _alua.timer.add(timer_callback, header.timeout)
+	end
 	-- Read in the message.
 	local msg, e = sock:receive(header.len)
 	if not msg then
@@ -125,17 +131,34 @@ process_message(sock, context, header, reply, forwarding)
 	if not header.from then header.from = context.id end
 	-- Attempt to send the message to each of the requested
 	-- processes, filling the reply table accordingly.
-	local _reply = {}
-	if type(header.to) == "table" and not forwarding then
-		for _, dest in header.to do
-			local ok, e = msg_delivery(context, dest, header, msg)
-			_reply[dest] = { status = ok, error = e }
+	local done, _reply = {}, {}
+	if forwarding then
+		local reply_callback = function (__reply)
+			reply(__reply)
 		end
 	else
-		local ok, e = msg_delivery(context, header.to, header, msg)
-		_reply[header.to] = { status = ok, error = e }
+		local reply_callback = function (__reply)
+			table.foreach(__reply, print)
+			_reply[__reply.to] =  { status = __reply.status,
+						error = __reply.error,
+						to = __reply.to }
+			if type(header.to) == "table" then
+				table.insert(done, __reply.to)
+				if table.getn(done) == table.getn(header.to) then
+					reply(_reply) -- Time to reply.
+				end
+			else
+				reply(_reply) -- Reply straight away.
+			end
+		end
 	end
-	reply(_reply)
+	if type(header.to) == "table" and not forwarding then
+		for _, dest in header.to do
+			msg_delivery(context, dest, header, msg, reply_callback)
+		end
+	else
+		msg_delivery(context, header.to, header, msg, reply_callback)
+	end
 end
 
 local function
