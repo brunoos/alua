@@ -84,7 +84,7 @@ process_start(sock, context, arg, reply)
 	context.apptable[arg.name] = app
 	-- Tell our fellow daemons about this new application.
 	for i, s in daemons do
-		_alua.netio.cmd(s, "start", { name = arg.name,
+		_alua.netio.async(s, "start", { name = arg.name,
 					 master = context.id })
 	end
 	reply(_reply)
@@ -102,7 +102,7 @@ msg_delivery(context, dest, header, msg)
 		local socket = app.ptab[dest]
 		if socket then
 			-- Send the header, then the message.
-			_alua.netio.cmd(socket, "message", header)
+			_alua.netio.async(socket, "message", header)
 			socket:send(msg)
 			return "ok"
 		end
@@ -217,8 +217,8 @@ spawn_local(context, app, name, callback)
 	if ret.status == "ok" then
 		-- Warn the other daemons about this new process.
 		for _, sock in daemons do
-			_alua.netio.cmd(sock, "notify", { app = app.name,
-						    id = ret.id })
+			_alua.netio.async(sock, "notify",
+			    { app = app.name, id = ret.id })
 		end
 	end
 
@@ -229,7 +229,7 @@ local function
 spawn_forward(hash, app, name, callback)
 	local sock = daemons[hash]
 	fake = true
-	_alua.netio.cmd(sock, "spawn", { app = app.name, name = name }, callback)
+	_alua.netio.async(sock, "spawn", { app = app.name, name = name }, callback)
 end
 
 -- Spawn switch. Takes care of distributing the processes
@@ -322,7 +322,7 @@ process_link(sock, context, arg, reply)
 			_reply.daemons[hash] = "Ok"
 			-- Forward the link request, so the remote daemons can
 			-- also create connections between themselves.
-			_alua.netio.cmd(daemons[hash], "link", arg.daemons)
+			_alua.netio.async(daemons[hash], "link", arg.daemons)
 		end
 	end
 

@@ -59,7 +59,7 @@ function alua.command(type, arg, callback)
 			callback({ status = "error", error = "Not connected" })
 		end
 	else
-		_alua.netio.cmd(alua.socket, type, arg, callback)
+		_alua.netio.async(alua.socket, type, arg, callback)
 	end
 end
 

@@ -125,7 +125,7 @@ end
 -- Issue a protocol command, asynchronously.
 --
 function
-_alua.netio.cmd(sock, cmd, arg, callback)
+_alua.netio.async(sock, cmd, arg, callback)
 	-- Get the socket context.
 	local _, context = _alua.event.get(sock)
 
