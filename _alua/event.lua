@@ -26,15 +26,13 @@ local write_table = {}
 
 local tmp = {}
 
-local function
-list_insert(list, element)
+local function list_insert(list, element)
 	table.insert(list, element)
 	tmp[list] = tmp[list] or {}
 	tmp[list][element] = table.getn(list)
 end
 
-local function
-list_remove(list, element)
+local function list_remove(list, element)
 	local index = tmp[list][element]
 	local last = table.remove(list)
 	tmp[list][element] = nil

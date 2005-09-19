@@ -16,11 +16,8 @@ module("_alua.timer")
 -- Count and table of active timers.
 _alua.timer.active_count, _alua.timer.active_table = 0, {}
 
---
 -- Add a new timer.
---
-function
-_alua.timer.add(cmd, freq)
+function _alua.timer.add(cmd, freq)
 	if not cmd or not freq then return nil end
 	if not luatimer then require("luatimer") end
 	local t, e = luatimer.insertTimer(freq)
@@ -30,21 +27,15 @@ _alua.timer.add(cmd, freq)
 	return t
 end
 
---
 -- Remove a timer.
---
-function
-_alua.timer.del(t)
+function _alua.timer.del(t)
 	luatimer.removeTimer(t)
 	_alua.timer.active_table[t] = nil
 	_alua.timer.active_count = _alua.timer.active_count - 1
 end
 
---
 -- Poll for expirations.
---
-function
-_alua.timer.poll()
+function _alua.timer.poll()
 	local tt = luatimer.timeoutAll()
 	for _, t in tt do
 		local f = _alua.timer.active_table[t]
