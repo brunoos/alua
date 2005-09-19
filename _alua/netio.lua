@@ -52,27 +52,19 @@ _alua.netio.recv(sock)
 	return cmd, arg
 end
 
---
--- Handle an incoming request.
---
-function
-_alua.netio.request(sock, context, cmd, data)
-	-- Try to find a handler for it.
-	local handler = context.cmdtab[cmd]
+-- Handle an incoming request. Try to find a handler for it, and prepare a
+-- reply function to be used by the handler.
+function _alua.netio.request(sock, context, cmd, data)
+	local handler = context.command_table[cmd]
 	if not handler then
 		_alua.netio.send(sock, "error", { value = "Invalid command" } )
 		return
 	end
-
-	-- Call the handler.
-	local reply = handler(sock, context, data)
-	if not reply then return end
-
-	-- Keep state.
-	reply.sequence_count = data.sequence_count
-
-	-- Send eventual replies back.
-	_alua.netio.send(sock, cmd .. "-reply", reply)
+	local reply = function (body)
+		body.sequence_count = data.sequence_count -- Keep state.
+		_alua.netio.send(sock, cmd .. "-reply", body)
+	end
+	handler(sock, context, data, reply)
 end
 
 --

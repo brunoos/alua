@@ -32,14 +32,14 @@ end
 
 -- Check if a given application exists.
 local function
-process_query(sock, context, arg)
+process_query(sock, context, arg, reply)
 	-- Look up the application.
 	local app = apptable[arg.name]
 	if not app then
 		-- Application does not exist.
-		return { name = arg.name }
+		reply({ name = arg.name })
+		return
 	end
-
 	-- To avoid constructing the same tables again and again, keep a cache
 	-- which is invalidated everytime a new process comes in or leaves.
 	if not app.cache then
@@ -50,14 +50,13 @@ process_query(sock, context, arg)
 		app.cache.name = arg.name
 		app.cache.master = app.master
 	end
-
-	return { master = app.cache.master, name = app.cache.name,
-		 processes = app.cache.ptab }
+	reply({ master = app.cache.master, name = app.cache.name,
+	    processes = app.cache.ptab })
 end
 
 -- A remote daemon is telling us about a new application.
 local function
-daemon_start(sock, context, arg)
+daemon_start(sock, context, arg, reply)
 	apptable[arg.name] = arg
 	apptable[arg.name].ptab = {}
 	apptable[arg.name].ptab[arg.master] = sock
@@ -65,35 +64,30 @@ end
 
 -- Start a new application.
 local function
-process_start(sock, context, arg)
+process_start(sock, context, arg, reply)
 	-- Make sure the application does not exist.
 	local app = apptable[arg.name]
 	if app then
-		return { name = arg.name, status = "error",
-			 error = "Application already exists"
-		}
+		reply({ name = arg.name, status = "error",
+		        error = "Application already exists" })
+		return
 	end
-
 	-- Initialize the object that is going to represent it.
 	-- Insert the master in the process table.
 	app = { master = context.id, ptab = {}, name = arg.name }
 	app.ptab[app.master] = sock
-
 	-- Prepare the reply.
-	local reply = { name = arg.name, status = "ok" }
-
+	local _reply = { name = arg.name, status = "ok" }
 	-- Save the application in the global table.
 	-- And associate the master process with it.
 	apptable[arg.name] = app
 	context.apptable[arg.name] = app
-
 	-- Tell our fellow daemons about this new application.
 	for i, s in daemons do
 		_alua.netio.cmd(s, "start", { name = arg.name,
 					 master = context.id })
 	end
-
-	return reply
+	reply(_reply)
 end
 
 -- Auxiliary function for delivering a message to a process.
@@ -101,7 +95,7 @@ local function
 msg_delivery(context, dest, header, msg)
 	-- Look up the destination process in all
 	-- the applications the sender is in.
-	if context.cmdtab == daemon_cmdtab then
+	if context.command_table == daemon_command_table then
 		context.apptable = apptable
 	end
 	for _, app in context.apptable do
@@ -119,7 +113,7 @@ end
 
 -- Receive a message from a process and deliver it.
 local function
-process_message(sock, context, header, forwarding)
+process_message(sock, context, header, reply, forwarding)
 	-- Read in the message.
 	local msg, e = sock:receive(header.len)
 	if not msg then
@@ -127,30 +121,26 @@ process_message(sock, context, header, forwarding)
 		    ": " .. e)
 		return
 	end
-
 	-- Once we have it, tag the header with the 'from' identification.
 	if not header.from then header.from = context.id end
-
 	-- Attempt to send the message to each of the requested
 	-- processes, filling the reply table accordingly.
-	local reply = {}
-
+	local _reply = {}
 	if type(header.to) == "table" and not forwarding then
 		for _, dest in header.to do
 			local ok, e = msg_delivery(context, dest, header, msg)
-			reply[dest] = { status = ok, error = e }
+			_reply[dest] = { status = ok, error = e }
 		end
 	else
 		local ok, e = msg_delivery(context, header.to, header, msg)
-		reply[header.to] = { status = ok, error = e }
+		_reply[header.to] = { status = ok, error = e }
 	end
-
-	return reply 
+	reply(_reply)
 end
 
 local function
-daemon_message(sock, context, header)
-	return process_message(sock, context, header, true)
+daemon_message(sock, context, header, reply)
+	process_message(sock, context, header, reply, true)
 end
 
 -- Auxiliar function for spawning a new process.
@@ -178,7 +168,7 @@ spawn(context, app, id)
 	if f == 0 then
 		s2:close()
 		local new_context = { apptable = { [app.name] = app }, id = id,
-				      cmdtab = process_cmdtab }
+				      command_table = process_command_table }
 		_alua.event.add(s1, { read = _alua.netio.handler }, new_context)
 
 		-- Associate the process with the application.
@@ -204,7 +194,7 @@ spawn(context, app, id)
 	alua.id = id
 	commands = { ["message"] = alua.incoming_msg }
 	callback = { read = _alua.netio.handler }
-	_alua.event.add(s2, callback, { cmdtab = commands })
+	_alua.event.add(s2, callback, { command_table = commands })
 	alua.loop()
 	os.exit()
 end
@@ -259,27 +249,26 @@ end
 
 -- Spawn new processes. Operates asynchronously.
 local function
-process_spawn(sock, context, arg)
+process_spawn(sock, context, arg, reply)
 	local count
 	-- Make sure the application exists.
 	local app = apptable[arg.name]
 	if not app then
-		return { name = arg.name, status = "error",
-			 error = "Application does not exist" }
+		reply({ name = arg.name, status = "error",
+		        error = "Application does not exist" })
+		return
 	end
-
 	-- And that the requesting process is in it.
 	if not context.apptable[arg.name] then
-		return { name = arg.name, status = "error",
-			 error = "Not in such application" }
+		reply({ name = arg.name, status = "error",
+		        error = "Not in such application" })
+		return
 	end
-
 	if type(arg.count) == "table" then
 		count = table.getn(arg.count)
 	else
 		count = arg.count
 	end
-
 	local ptab, done = {}, 0
 	local callback = function(reply)
 		ptab[reply.id] = { status = reply.status,
@@ -292,7 +281,6 @@ process_spawn(sock, context, arg)
 			    { name = arg.name, processes = ptab })
 		end
 	end
-
 	-- Launch requests for every process, and return.
 	if type(arg.count) == "table" then
 		-- If the argument received is a table, then it must hold the
@@ -311,17 +299,17 @@ end
 
 -- Forwarded request for new processes.
 local function
-daemon_spawn(sock, context, arg)
+daemon_spawn(sock, context, arg, reply)
 	local app = apptable[arg.app]
-	return spawn_local(app, app, arg.name)
+	reply(spawn_local(app, app, arg.name))
 end
 
 -- Extend our network of daemons.
 local function
-process_link(sock, context, arg)
+process_link(sock, context, arg, reply)
 	-- Just iterate over the given array of daemons,
 	-- opening connections to each one of them.
-	local reply = { daemons = {}, status = "ok" }
+	local _reply = { daemons = {}, status = "ok" }
 	for _, hash in arg.daemons or {} do
 		if arg.authfs then
 			local f = loadstring(arg.authfs)
@@ -329,27 +317,27 @@ process_link(sock, context, arg)
 		if hash == 0 then break end
 		local sock, id, e = connect(hash, "daemon", f)
 		if not sock then
-			reply.daemons[hash] = e -- Error
+			_reply.daemons[hash] = e -- Error
 		else
-			reply.daemons[hash] = "Ok"
+			_reply.daemons[hash] = "Ok"
 			-- Forward the link request, so the remote daemons can
 			-- also create connections between themselves.
 			_alua.netio.cmd(daemons[hash], "link", arg.daemons)
 		end
 	end
 
-	return reply
+	reply(_reply)
 end
 
 -- Extend our network of daemons, request coming from a daemon.
 local function
-daemon_link(sock, context, arg)
-	return process_link(sock, context, arg)
+daemon_link(sock, context, arg, reply)
+	process_link(sock, context, arg, reply)
 end
 
 -- A daemon is telling us about a new process belonging to it.
 local function
-daemon_notify(sock, context, arg)
+daemon_notify(sock, context, arg, reply)
 	local app = apptable[arg.app]
 	app.ptab[arg.id] = sock
 	app.cache = nil
@@ -357,61 +345,57 @@ end
 
 -- Associate a process with an application.
 local function
-process_join(sock, context, arg)
+process_join(sock, context, arg, reply)
 	-- Make sure the application exists.
 	local app = apptable[arg.name]
 	if not app then
-		return { name = arg.name, status = "error",
-		 error = "Application does not exist" }
+		reply({ name = arg.name, status = "error",
+		        error = "Application does not exist" })
+		return
 	end
-
 	-- And that the requesting process is not in it.
 	if context.apptable[arg.name] then
-		return { name = arg.name, status = "error",
-			 error = "Already in application" }
+		reply({ name = arg.name, status = "error",
+			error = "Already in application" })
+		return
 	end
-
 	-- Associate the process with the application.
 	context.apptable[arg.name] = app
 	app.ptab[context.id] = sock
-
 	-- Invalidate the application's process cache.
 	app.cache = nil
-
 	-- We must return information about the joined
 	-- application, so simulate a query.
-	return process_query(sock, context, { name = arg.name })
+	process_query(sock, context, { name = arg.name }, reply)
 end
 
 -- Leave an application.
 local function
-process_leave(sock, context, arg)
+process_leave(sock, context, arg, reply)
 	-- Make sure the application exists.
 	local app = apptable[arg.name]
 	if not app then
-		return { name = arg.name, status = "error", 
-			 error = "Application does not exist" }
+		reply({ name = arg.name, status = "error",
+			error = "Application does not exist" })
+		return
 	end
-
 	-- And that the requesting process is in it.
 	if not context.apptable[arg.name] then
-		return { name = arg.name, status = "error",
-			 error = "Not in such application" }
+		reply({ name = arg.name, status = "error",
+			error = "Not in such application" })
+		return
 	end
-
 	-- Deassociate the process from the application.
 	context.apptable[arg.name] = nil
 	app.ptab[context.id] = nil
-
 	-- Invalidate the application's process cache.
 	app.cache = nil
-
-	return { name = arg.name, status = "ok" }
+	reply({ name = arg.name, status = "ok" })
 end
 
 -- Authenticate a remote endpoint, either as a process or a daemon.
 function
-proto_auth(sock, context, arg)
+proto_auth(sock, context, arg, reply)
 	context.mode = arg.mode
 	context.apptable = {}
 
@@ -419,18 +403,18 @@ proto_auth(sock, context, arg)
 		-- Get an ID for the new process.
 		context.id = newid()
 		-- Set the connection to a 'process' context.
-		context.cmdtab = process_cmdtab
+		context.command_table = process_command_table
 	end
 
 	if arg.mode == "daemon" then
 		context.id = arg.id
 		-- Set the connection to a 'daemon' context.
-		context.cmdtab = daemon_cmdtab
+		context.command_table = daemon_command_table
 		-- And mark that we now have a connection with that daemon.
 		daemons[context.id] = sock
 	end
 
-	return { id = context.id }
+	reply({ id = context.id })
 end
 
 -- Connect to a daemon.
@@ -448,7 +432,7 @@ connect(hash, mode, authf)
 	daemons[hash] = sock
 	if mode == "daemon" then
 		_alua.event.add(sock, { read = _alua.netio.handler },
-		    { cmdtab = daemon_cmdtab })
+		    { command_table = daemon_command_table })
 	end
 	return sock, reply.id
 end
@@ -462,7 +446,8 @@ aluad_connection(sock, context)
 	else
 		-- A connection in a raw context can only do 'auth'.
 		local commands = { ["auth"] = proto_auth }
-		_alua.event.add(ic, { read = _alua.netio.handler }, { cmdtab = commands })
+		_alua.event.add(ic, { read = _alua.netio.handler },
+		    { command_table = commands })
 	end
 end
 
@@ -496,7 +481,7 @@ create(uconf)
 	while true do _alua.event.loop() end
 end
 
-process_cmdtab = {
+process_command_table = {
 	["link"] = process_link,
 	["join"] = process_join,
 	["start"] = process_start,
@@ -506,7 +491,7 @@ process_cmdtab = {
 	["leave"] = process_leave,
 }
 
-daemon_cmdtab = {
+daemon_command_table = {
 	["link"] = daemon_link,
 	["start"] = daemon_start,
 	["spawn"] = daemon_spawn,
