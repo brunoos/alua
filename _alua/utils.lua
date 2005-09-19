@@ -58,3 +58,15 @@ _alua.utils.unhash(hash)
 	local _, i_, addr, port, id = string.find(hash, "(%d.+):(%d+)")
 	return addr, tonumber(port), id
 end
+
+-- Code for isolating access to nil fields in a table.
+function _alua.utils.protect(t, f)
+	setmetatable(t, { __index = function(t, k)
+		return rawget(t, k) or f
+	end })
+end
+
+-- Generic function for revoking a command
+function _alua.utils.invalid_command(sock, context, arguments, reply)
+	reply({ status = "error", error = "invalid command" })
+end
