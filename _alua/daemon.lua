@@ -85,7 +85,7 @@ process_start(sock, context, arg, reply)
 	-- Tell our fellow daemons about this new application.
 	for i, s in daemons do
 		_alua.netio.async(s, "start", { name = arg.name,
-					 master = context.id })
+		    master = context.id })
 	end
 	reply(_reply)
 end
@@ -108,87 +108,38 @@ msg_delivery(context, dest, header, msg, callback)
 	end
 end
 
--- Common code for processes and daemons for sending messages.
+-- Receive a message from a process and deliver it.
 local function message_common(sock, context, header, reply, forwarding)
-	-- If a timeout was given, set up a timer for it.
-	local timer
-	if header.timeout then
-		local timer_callback = function(t)
-			reply({ status = "error", error "timeout" })
-			_alua.timer.del(t)
-		end
-		timer = _alua.timer.add(timer_callback, header.timeout)
-	end
 	-- Read in the message.
 	local msg, e = sock:receive(header.len)
-	-- Once we have it, tag the header with 'from' identification.
 	if not header.from then header.from = context.id end
-	-- Attempt to send the message to each of the requested processes,
+	-- Attempt to send the messge to each of the requested processes,
 	-- filling the reply table accordingly.
 	if type(header.to) == "table" and not forwarding then
 		for _, dest in header.to do
 			msg_delivery(context, dest, header, msg, reply)
 		end
-	else
-		msg_delivery(context, header.to, header, msg, reply)
-	end
+	else msg_delivery(context, header.to, header, msg, reply) end
 end
 
 -- Receive a message from a process and deliver it.
-local function
-process_message(sock, context, header, reply, forwarding)
-	local timer
-	-- If a timeout was given, set up a timer for it.
-	if header.timeout then
-		local timer_callback = function(t)
-			reply({ status = "error", error = "timeout" })
-			_alua.timer.del(t)
-		end
-		timer = _alua.timer.add(timer_callback, header.timeout)
-	end
-	-- Read in the message.
-	local msg, e = sock:receive(header.len)
-	if not msg then
-		print("Error receiving message from process " .. context.id ..
-		    ": " .. e)
-		return
-	end
-	-- Once we have it, tag the header with the 'from' identification.
-	if not header.from then header.from = context.id end
-	-- Attempt to send the message to each of the requested
-	-- processes, filling the reply table accordingly.
+local function process_message(sock, context, header, reply)
 	local done, _reply = {}, {}
-	if forwarding then
-		local reply_callback = function (__reply)
-			reply(__reply)
-		end
-	else
-		local reply_callback = function (__reply)
-			_reply[__reply.to] =  { status = __reply.status,
-						error = __reply.error,
-						to = __reply.to }
-			if type(header.to) == "table" then
-				table.insert(done, __reply.to)
-				if table.getn(done) == table.getn(header.to) then
-					reply(_reply) -- Time to reply.
-				end
-			else
-				reply(_reply) -- Reply straight away.
-			end
-		end
+	local reply_callback = function (__reply)
+		_reply[__reply.to] = { status = __reply.status,
+		    error = __reply.error, to = __reply.to }
+		if type(header.to) == "table" then
+			table.insert(done, __reply.to)
+			if table.getn(done) == table.getn(header.to) then
+				reply(_reply) end -- Time to reply
+		else reply(_reply) end -- Reply straight away
 	end
-	if type(header.to) == "table" and not forwarding then
-		for _, dest in header.to do
-			msg_delivery(context, dest, header, msg, reply_callback)
-		end
-	else
-		msg_delivery(context, header.to, header, msg, reply_callback)
-	end
+	message_common(sock, context, header, reply_callback, false)
 end
 
-local function
-daemon_message(sock, context, header, reply)
-	process_message(sock, context, header, reply, true)
+local function daemon_message(sock, context, header, reply)
+	local reply_callback = function (__reply) reply(__reply) end
+	message_common(sock, context, header, reply_callback, true)
 end
 
 -- Auxiliar function for spawning a new process.
@@ -481,7 +432,7 @@ connect(hash, mode, authf)
 		_alua.event.add(sock, { read = _alua.netio.handler },
 		    { command_table = daemon_command_table })
 	end
-	return sock, reply.id
+	return sock, reply.arguments.id
 end
 
 -- Dequeue an incoming connection, set it to a raw context.
