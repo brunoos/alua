@@ -150,7 +150,7 @@ end
 
 local function
 daemon_message(sock, context, header)
-	process_message(sock, context, header, true)
+	return process_message(sock, context, header, true)
 end
 
 -- Auxiliar function for spawning a new process.
