@@ -119,7 +119,7 @@ end
 
 -- Receive a message from a process and deliver it.
 local function
-process_message(sock, context, header)
+process_message(sock, context, header, forwarding)
 	-- Read in the message.
 	local msg, e = sock:receive(header.len)
 	if not msg then
@@ -150,9 +150,7 @@ end
 
 local function
 daemon_message(sock, context, header)
-	forwarding = true
-	process_message(sock, context, header)
-	forwarding = false
+	process_message(sock, context, header, true)
 end
 
 -- Auxiliar function for spawning a new process.
