@@ -293,15 +293,14 @@ process_spawn(sock, context, arg, reply)
 		count = arg.count
 	end
 	local ptab, done = {}, 0
-	local callback = function(reply)
-		ptab[reply.id] = { status = reply.status,
-				   error = reply.error,
-				   daemon = reply.daemon }
+	local callback = function(_reply)
+		ptab[_reply.id] = { status = _reply.status,
+				   error = _reply.error,
+				   daemon = _reply.daemon }
 		done = done + 1
 		if done == count then
 			-- Time to send the reply.
-			_alua.netio.spawn_reply(sock, "spawn", arg,
-			    { name = arg.name, processes = ptab })
+			reply({ name = arg.name, processes = ptab })
 		end
 	end
 	-- Launch requests for every process, and return.

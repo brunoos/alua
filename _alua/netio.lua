@@ -152,12 +152,3 @@ function _alua.netio.sync(sock, cmd, args)
 	end
 	return reply
 end
-
---
--- The spawn algorithm needs to be reviewed, so this kludge can be removed.
---
-function
-_alua.netio.spawn_reply(sock, cmd, oldp, newp)
-	newp.sequence_count = oldp.sequence_count
-	_alua.netio.send(sock, cmd .. "-reply", newp)
-end
