@@ -21,6 +21,7 @@ _alua.timer.active_count, _alua.timer.active_table = 0, {}
 --
 function
 _alua.timer.add(cmd, freq)
+	if not cmd or not freq then return nil end
 	if not luatimer then require("luatimer") end
 	local t, e = luatimer.insertTimer(freq)
 	if not t then return nil, e end
