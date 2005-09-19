@@ -16,9 +16,10 @@ require("posix")
 require("_alua.event")
 require("_alua.netio")
 require("_alua.utils")
+require("_alua.message")
 
 local daemons = {}
-local apptable = {}
+_alua.daemon.apptable = {}
 local idcount = 0 -- Count of local process IDs.
 local current_daemon_idx = 0
 
@@ -34,7 +35,7 @@ end
 local function
 process_query(sock, context, arg, reply)
 	-- Look up the application.
-	local app = apptable[arg.name]
+	local app = _alua.daemon.apptable[arg.name]
 	if not app then
 		-- Application does not exist.
 		reply({ name = arg.name })
@@ -57,16 +58,16 @@ end
 -- A remote daemon is telling us about a new application.
 local function
 daemon_start(sock, context, arg, reply)
-	apptable[arg.name] = arg
-	apptable[arg.name].ptab = {}
-	apptable[arg.name].ptab[arg.master] = sock
+	_alua.daemon.apptable[arg.name] = arg
+	_alua.daemon.apptable[arg.name].ptab = {}
+	_alua.daemon.apptable[arg.name].ptab[arg.master] = sock
 end
 
 -- Start a new application.
 local function
 process_start(sock, context, arg, reply)
 	-- Make sure the application does not exist.
-	local app = apptable[arg.name]
+	local app = _alua.daemon.apptable[arg.name]
 	if app then
 		reply({ name = arg.name, status = "error",
 		        error = "Application already exists" })
@@ -80,7 +81,7 @@ process_start(sock, context, arg, reply)
 	local _reply = { name = arg.name, status = "ok" }
 	-- Save the application in the global table.
 	-- And associate the master process with it.
-	apptable[arg.name] = app
+	_alua.daemon.apptable[arg.name] = app
 	context.apptable[arg.name] = app
 	-- Tell our fellow daemons about this new application.
 	for i, s in daemons do
@@ -88,58 +89,6 @@ process_start(sock, context, arg, reply)
 		    master = context.id })
 	end
 	reply(_reply)
-end
-
--- Auxiliary function for delivering a message to a process.
-local function
-msg_delivery(context, dest, header, msg, callback)
-	-- Look up the destination process in all
-	-- the applications the sender is in.
-	if context.command_table == daemon_command_table then
-		context.apptable = apptable
-	end
-	for _, app in context.apptable do
-		local socket = app.ptab[dest]
-		if socket then
-			-- Send the header, then the message.
-			_alua.netio.async(socket, "message", header, callback)
-			socket:send(msg)
-		end
-	end
-end
-
--- Receive a message from a process and deliver it.
-local function message_common(sock, context, header, reply, forwarding)
-	-- Read in the message.
-	local msg, e = sock:receive(header.len)
-	if not header.from then header.from = context.id end
-	-- Attempt to send the messge to each of the requested processes,
-	-- filling the reply table accordingly.
-	if type(header.to) == "table" and not forwarding then
-		for _, dest in header.to do
-			msg_delivery(context, dest, header, msg, reply)
-		end
-	else msg_delivery(context, header.to, header, msg, reply) end
-end
-
--- Receive a message from a process and deliver it.
-local function process_message(sock, context, header, reply)
-	local done, _reply = {}, {}
-	local reply_callback = function (__reply)
-		_reply[__reply.to] = { status = __reply.status,
-		    error = __reply.error, to = __reply.to }
-		if type(header.to) == "table" then
-			table.insert(done, __reply.to)
-			if table.getn(done) == table.getn(header.to) then
-				reply(_reply) end -- Time to reply
-		else reply(_reply) end -- Reply straight away
-	end
-	message_common(sock, context, header, reply_callback, false)
-end
-
-local function daemon_message(sock, context, header, reply)
-	local reply_callback = function (__reply) reply(__reply) end
-	message_common(sock, context, header, reply_callback, true)
 end
 
 -- Auxiliar function for spawning a new process.
@@ -251,7 +200,7 @@ local function
 process_spawn(sock, context, arg, reply)
 	local count
 	-- Make sure the application exists.
-	local app = apptable[arg.name]
+	local app = _alua.daemon.apptable[arg.name]
 	if not app then
 		reply({ name = arg.name, status = "error",
 		        error = "Application does not exist" })
@@ -298,7 +247,7 @@ end
 -- Forwarded request for new processes.
 local function
 daemon_spawn(sock, context, arg, reply)
-	local app = apptable[arg.app]
+	local app = _alua.daemon.apptable[arg.app]
 	reply(spawn_local(app, app, arg.name))
 end
 
@@ -336,7 +285,7 @@ end
 -- A daemon is telling us about a new process belonging to it.
 local function
 daemon_notify(sock, context, arg, reply)
-	local app = apptable[arg.app]
+	local app = _alua.daemon.apptable[arg.app]
 	app.ptab[arg.id] = sock
 	app.cache = nil
 end
@@ -345,7 +294,7 @@ end
 local function
 process_join(sock, context, arg, reply)
 	-- Make sure the application exists.
-	local app = apptable[arg.name]
+	local app = _alua.daemon.apptable[arg.name]
 	if not app then
 		reply({ name = arg.name, status = "error",
 		        error = "Application does not exist" })
@@ -371,7 +320,7 @@ end
 local function
 process_leave(sock, context, arg, reply)
 	-- Make sure the application exists.
-	local app = apptable[arg.name]
+	local app = _alua.daemon.apptable[arg.name]
 	if not app then
 		reply({ name = arg.name, status = "error",
 			error = "Application does not exist" })
@@ -407,7 +356,7 @@ proto_auth(sock, context, arg, reply)
 	if arg.mode == "daemon" then
 		context.id = arg.id
 		-- Set the connection to a 'daemon' context.
-		context.command_table = daemon_command_table
+		context.command_table = _alua.daemon.command_table
 		-- And mark that we now have a connection with that daemon.
 		daemons[context.id] = sock
 	end
@@ -430,7 +379,7 @@ connect(hash, mode, authf)
 	daemons[hash] = sock
 	if mode == "daemon" then
 		_alua.event.add(sock, { read = _alua.netio.handler },
-		    { command_table = daemon_command_table })
+		    { command_table = _alua.daemon.command_table })
 	end
 	return sock, reply.arguments.id
 end
@@ -485,18 +434,18 @@ process_command_table = {
 	["start"] = process_start,
 	["query"] = process_query,
 	["spawn"] = process_spawn,
-	["message"] = process_message,
+	["message"] = _alua.daemon.message.from_process,
 	["leave"] = process_leave,
 }
 
-daemon_command_table = {
+_alua.daemon.command_table = {
 	["link"] = daemon_link,
 	["start"] = daemon_start,
 	["spawn"] = daemon_spawn,
 	["notify"] = daemon_notify,
-	["message"] = daemon_message,
+	["message"] = _alua.daemon.message.from_daemon,
 }
 
 -- Protect access to the tables above
 _alua.utils.protect(process_command_table, _alua.utils.invalid_command)
-_alua.utils.protect(daemon_command_table, _alua.utils.invalid_command)
+_alua.utils.protect(_alua.daemon.command_table, _alua.utils.invalid_command)
