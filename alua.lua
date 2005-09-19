@@ -179,6 +179,7 @@ function alua.connect(daemon, auth_callback)
 	-- Collect events from the daemon.
 	commands = { ["message"] = alua.incoming_msg }
 	callback = { read = _alua.netio.handler }
+	_alua.utils.protect(commands, _alua.utils.invalid_command)
 	_alua.event.add(socket, callback, { command_table = commands })
 	return daemon
 end
