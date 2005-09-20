@@ -37,7 +37,7 @@ local function spawn(context, app, id)
 		s1:close(); s2:close(); return id, "error", "fork failed" end
 	if f > 0 then s1:close(); spawn_loop(context, app, id, s2) end
 	local _context = { apptable = { [app.name] = app }, id = id,
-			   command_table = _alua.daemon.process_ct }
+			   command_table = _alua.daemon.process_command_table }
 	_alua.event.add(s1, { read = _alua.netio.handler }, _context)
 	app.processes[id] = s1; app.cache = nil -- Invalidate cache
 	s2:close(); return id, "ok"

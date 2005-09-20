@@ -26,67 +26,49 @@ function alua.incoming_msg(sock, context, header, reply)
 	-- Validate the header received.
 	if not header or not header.len or not header.from then
 		print("Invalid packet header received from daemon")
-		alua.close()
-		return
-	end
+		alua.close(); return end
 	-- Receive the message.
 	message, e = sock:receive(header.len)
 	if not message then
 		print("Error receiving message from daemon: " .. e)
-		alua.close()
-		return
-	end
+		alua.close(); return end
 	-- Load the message into an executable object.
 	obj, e = loadstring(message)
 	if not obj then
 		print("Failed to load chunk received from " .. 
 		    _alua.utils.dump(header.from) .. ": " .. e)
-		return
-	end
-
+		return end
 	reply({ to = alua.id, status = "ok" })
-
 	-- And run it.
 	okay, e = pcall(obj)
 	if not okay then
 		print("Failed to execute chunk received from " ..
-		    _alua.utils.dump(header.from) .. ": " .. e)
-	end
+		    _alua.utils.dump(header.from) .. ": " .. e) end
 end
 
 -- Auxiliary function for issuing commands to the daemon.
 function alua.command(type, arg, callback)
 	if not alua.socket then
-		-- If we are not connected yet, error out.
-		if callback then
-			callback({ status = "error", error = "Not connected" })
+		if callback then -- If we are not connected yet, error out.
+			callback({ status = "error", error = "not connected" })
 		end
-	else
-		_alua.netio.async(alua.socket, type, arg, callback)
-	end
+	else _alua.netio.async(alua.socket, type, arg, callback) end
 end
 
 -- The main event loop of an ALua process.
 function alua.loop()
 	while true do
 		-- If we run out of events, it's time to stop.
-		if _alua.event.loop() == 0 then
-			return
-		end
+		if _alua.event.loop() == 0 then return end
 		-- If there are any timers, check for them.
-		if _alua.timer.active_count > 0 then
-			_alua.timer.poll()
-		end
+		if _alua.timer.active_count > 0 then _alua.timer.poll() end
 	end
 end
 
 -- Terminate a process.
 function alua.exit(processes, callback, code)
 	-- If no processes were given, terminate the caller.
-	if not processes then
-		alua.close()
-		os.exit(code)
-	end
+	if not processes then alua.close(); os.exit(code) end
 	-- Pass the termination call to the given processes.
 	alua.send(processes, "alua.exit()", callback)
 end
@@ -97,40 +79,25 @@ end
 -- Leave an application.
 function alua.leave(name, callback)
 	local leave_callback = function(reply)
-		if reply.status == "ok" then
-			alua.applications[name] = nil
-		end
-		if callback then
-			callback(reply)
-		end
-	end
-	alua.command("leave", { name = name }, leave_callback)
+		if reply.status == "ok" then alua.applications[name] = nil end
+		if callback then callback(reply) end
+	end; alua.command("leave", { name = name }, leave_callback)
 end
 
 -- Join an application.
 function alua.join(name, callback)
 	local join_callback = function(reply)
-		if reply.status == "ok" then
-			alua.applications[name] = true
-		end
-		if callback then
-			callback(reply)
-		end
-	end
-	alua.command("join", { name = name }, join_callback)
+		if reply.status == "ok" then alua.applications[name] = true end
+		if callback then callback(reply) end
+	end; alua.command("join", { name = name }, join_callback)
 end
 
 -- Start a new application.
 function alua.start(name, callback)
 	local start_callback = function(reply)
-		if reply.status == "ok" then
-			alua.applications[name] = true
-		end
-		if callback then
-			callback(reply)
-		end
-	end
-	alua.command("start", { name = name }, start_callback)
+		if reply.status == "ok" then alua.applications[name] = true end
+		if callback then callback(reply) end
+	end; alua.command("start", { name = name }, start_callback)
 end
 
 -- Link our daemon to other daemons.
@@ -160,14 +127,12 @@ end
 function alua.connect(daemon)
 	local socket, commands, callback, id, e
 	-- If we're already connected, error out.
-	if alua.socket then return nil, "Already connected" end
+	if alua.socket then return nil, "already connected" end
 	-- Otherwise, try connecting.
 	socket, id, e = _alua.daemon.connect_process(daemon)
 	if not socket then return nil, e end
 	-- Okay, we have a daemon. Prepare the environment.
-	alua.socket = socket
-	alua.daemon = daemon
-	alua.id = id
+	alua.socket = socket; alua.daemon = daemon; alua.id = id
 	-- Collect events from the daemon.
 	commands = { ["message"] = alua.incoming_msg }
 	callback = { read = _alua.netio.handler }
@@ -192,14 +157,12 @@ end
 function alua.close(arg)
 	if arg then return _alua.channel.close(arg) end
 	-- If we're not connected, error out.
-	if not alua.socket then return nil, "Not connected" end
+	if not alua.socket then return nil, "not connected" end
 	-- Leave every application we are in.
 	for _, app in alua.applications do alua.leave(app) end
 	_alua.event.del(alua.socket)
 	alua.applications = {} -- Reset alua.applications now
-	alua.socket = nil
-	alua.daemon = nil
-	alua.id = nil
+	alua.socket = nil; alua.daemon = nil; alua.id = nil
 end
 
 -- Prepare the 'alua' table.

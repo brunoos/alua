@@ -1,12 +1,14 @@
 -- $Id$
-
--- Copyright (c) 2005 Lab//, PUC-Rio
+--
+-- Copyright (c) 2005 Pedro Martelletto <pedro@ambientworks.net>
 -- All rights reserved.
-
--- This file is part of ALua. As a consequence, to every excerpt of code
--- hereby obtained, the respective project's licence applies. Detailed
--- information regarding ALua's licence can be found in the LICENCE file.
-
+--
+-- This file is part of the ALua Project.
+--
+-- As a consequence, to every excerpt of code hereby obtained, the respective
+-- project's licence applies. Detailed information regarding the licence used
+-- in ALua can be found in the LICENCE file provided with this distribution.
+--
 -- Main body for the ALua daemon.
 module("_alua.daemon")
 
@@ -124,26 +126,21 @@ local function process_link(sock, context, argument, reply, noforward)
 	local _reply = { daemons = {}, status = "ok" }
 	for _, hash in argument.daemons or {} do
 		local sock, id, e = _alua.daemon.get(hash)
-		if not sock then
-			_reply.daemons[hash] = e
-		else
-			_reply.daemons[hash] = "ok"
-			app.daemons[hash] = sock
+		if not sock then _reply.daemons[hash] = e
+		else	_reply.daemons[hash] = "ok"; app.daemons[hash] = sock;
 			app.ndaemons = app.ndaemons + 1
 			argument.master = app.master
-			-- Forward the link request
+			-- Forward ink request
 			if _alua.daemon.self.hash ~= hash and not noforward then
-				_alua.netio.async(sock, "link", argument)
-			end
+				_alua.netio.async(sock, "link", argument) end
 		end
-	end
-	reply(_reply)
+	end; reply(_reply)
 end
 
 -- Extend our network of daemons, request coming from a daemon.
 local function daemon_link(sock, context, argument, reply)
-	local app
-	app = { master = argument.master, processes = {}, name = argument.name }
+	local app = { master = argument.master, processes = {},
+		      name = argument.name }
 	app.processes[app.master] = sock
 	_alua.daemon.apptable[argument.name] = app
 	context.apptable[argument.name] = app
@@ -152,15 +149,13 @@ local function daemon_link(sock, context, argument, reply)
 		app.daemons[_alua.daemon.self.hash] = s
 		app.daemons[context.id] = sock
 		process_link(sock, context, argument, reply, true)
-	end
-	_alua.daemon.get(_alua.daemon.self.hash, callback)
+	end; _alua.daemon.get(_alua.daemon.self.hash, callback)
 end
 
 -- A daemon is telling us about a new process belonging to it.
 local function daemon_notify(sock, context, argument, reply)
 	local app = _alua.daemon.apptable[argument.app]
-	app.processes[argument.id] = sock
-	app.cache = nil -- Invalidate cache
+	app.processes[argument.id] = sock; app.cache = nil -- Invalidate cache
 end
 
 -- Associate a process with an application.
@@ -168,8 +163,7 @@ local function process_join(sock, context, argument, reply)
 	local app = _alua.daemon.verify_proc_app(context, argument.name, reply)
 	if not app then return end -- Process not in application, bye
 	context.apptable[argument.name] = app
-	app.processes[context.id] = sock
-	app.cache = nil -- Invalidate cache
+	app.processes[context.id] = sock; app.cache = nil -- Invalidate cache
 	--- XXX: Should notify other daemons as well
 	process_query(sock, context, { name = argument.name }, reply)
 end
@@ -178,8 +172,7 @@ end
 local function process_leave(sock, context, argument, reply)
 	local app = _alua.daemon.verify_proc_app(context, argument.name, reply)
 	if not app then return end -- Process not in application, bye
-	app.processes[context.id] = nil
-	context.apptable[argument.name] = nil
+	app.processes[context.id] = nil; context.apptable[argument.name] = nil
 	app.cache = nil -- Invalidate cache
 	--- XXX: Should notify other daemons as well
 	reply({ name = argument.name, status = "ok" })
@@ -187,16 +180,13 @@ end
 
 -- Authenticate a remote endpoint, either as a process or a daemon.
 local function proto_auth(sock, context, argument, reply)
-	context.mode = argument.mode
-	context.apptable = {}
+	context.mode = argument.mode; context.apptable = {}
 	if argument.mode == "process" then
 		context.id = _alua.daemon.get_new_process_id()
-		context.command_table = process_ct
-	end
+		context.command_table = _alua.daemon.process_command_table end
 	if argument.mode == "daemon" then
 		context.id = argument.id
-		context.command_table = _alua.daemon.command_table
-	end
+		context.command_table = _alua.daemon.command_table end
 	reply({ id = context.id })
 end
 
@@ -236,7 +226,7 @@ function _alua.daemon.connect_process(daemon, auth_callback)
         return sock, reply.arguments.id
 end
 
-process_ct = {
+_alua.daemon.process_command_table = {
 	["link"] = process_link,
 	["join"] = process_join,
 	["start"] = process_start,
@@ -253,6 +243,7 @@ _alua.daemon.command_table = {
 	["message"] = _alua.daemon.message.from_daemon,
 }
 
--- Protect access to the tables above
-_alua.utils.protect(process_ct, _alua.utils.invalid_command)
-_alua.utils.protect(_alua.daemon.command_table, _alua.utils.invalid_command)
+_alua.utils.protect(_alua.daemon.process_command_table,
+		    _alua.utils.invalid_command)
+_alua.utils.protect(_alua.daemon.command_table,
+		    _alua.utils.invalid_command)
