@@ -20,7 +20,7 @@ local function msg_delivery(context, header, msg, callback)
 		context.apptable = _alua.daemon.apptable end
 	for _, app in context.apptable do
 		local socket = app.processes[header.to]
-		if socket then  -- Send the header, then the message
+		if socket then
 			_alua.netio.async(socket, "message", header, callback)
 			socket:send(msg) end
 	end
@@ -28,10 +28,10 @@ end
 
 -- Receive a message from a process and deliver it.
 local function message_common(sock, context, header, reply, forwarding)
-	local msg, e = sock:receive(header.len) -- Read in the message
+	local msg, e = sock:receive(header.len)
 	if not header.from then header.from = context.id end
 	if type(header.to) == "table" and not forwarding then
-		for _, dest in header.to do -- Fake new header
+		for _, dest in header.to do -- fake new header
 			local newheader = header; newheader.to = dest
 			msg_delivery(context, newheader, msg, reply) end
 	else msg_delivery(context, header, msg, reply) end
@@ -39,15 +39,11 @@ end
 
 -- Receive a message from a process and deliver it.
 function _alua.daemon.message.from_process(sock, context, header, reply)
-	local done, _reply = {}, {}
-	local reply_callback = function (__reply)
-		_reply[__reply.to] = { status = __reply.status,
-		    error = __reply.error, to = __reply.to }
-		if type(header.to) == "table" then
-			table.insert(done, __reply.to)
-			if table.getn(done) == table.getn(header.to) then
-				reply(_reply) end -- Time to reply
-		else reply(_reply) end -- Reply straight away
+	local done, _reply, to = {}, {}, header.to
+	local count = type(to) == "table" and table.getn(to) or 1
+	local reply_callback = function (msg)
+		_reply[msg.to] = { status = msg.status, error = msg.error }
+		count = count - 1; if count == 0 then reply(_reply) end
 	end; message_common(sock, context, header, reply_callback, false)
 end
 
