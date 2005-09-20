@@ -33,7 +33,7 @@ local function message_common(sock, context, header, reply, forwarding)
 	if type(header.to) == "table" and not forwarding then
 		for _, dest in header.to do -- Fake new header
 			local newheader = header; newheader.to = dest
-			msg_delivery(context, header, msg, reply) end
+			msg_delivery(context, newheader, msg, reply) end
 	else msg_delivery(context, header, msg, reply) end
 end
 
