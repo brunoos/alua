@@ -16,7 +16,8 @@
 -- daemons. Every event has its own context and an associated handler.
 
 module("_alua.event")
-require("socket")
+
+require("socket") -- External modules
 
 local event_panel = {}
 local read_table  = {}
@@ -27,18 +28,14 @@ local write_table = {}
 local tmp = {}
 
 local function list_insert(list, element)
-	table.insert(list, element)
-	tmp[list] = tmp[list] or {}
+	table.insert(list, element); tmp[list] = tmp[list] or {}
 	tmp[list][element] = table.getn(list)
 end
 
 local function list_remove(list, element)
-	local index = tmp[list][element]
-	local last = table.remove(list)
-	tmp[list][element] = nil
-	if last == element then return end
-	list[index] = last
-	tmp[list][last] = index
+	local index, last = tmp[list][element], table.remove(list)
+	tmp[list][element] = nil; if last == element then return end
+	list[index] = last; tmp[list][last] = index
 end
 
 -- Flush the event table. Used by the daemon when forking a new process.
@@ -60,13 +57,11 @@ function _alua.event.del(sock)
 	-- If the event has a terminator, execute it.
 	local context = event_panel[sock].context
 	if context.terminator then context.terminator(sock, context) end
-
 	-- Remove the associated event object.
 	local callbacks = event_panel[sock].handlers
 	if callbacks.read then list_remove(read_table, sock) end
 	if callbacks.write then list_remove(write_table, sock) end
-	event_panel[sock] = nil
-	sock:close()
+	event_panel[sock] = nil; sock:close()
 end
 
 -- Get the handler and the context of a socket.
@@ -77,19 +72,16 @@ end
 function _alua.event.loop()
 	-- Check for activity in the events sockets.
 	local ractive, wactive = socket.select(read_table, write_table, 1)
-
 	for _, s in ipairs(ractive) do
 		-- Do the respective callbacks.
 		local callback = event_panel[s].handlers.read
 		if callback then callback(s, event_panel[s].context) end
 	end
-
 	for _, s in ipairs(wactive) do
 		-- Do the respective callbacks.
 		local callback = event_panel[s].handlers.write
 		if callback then callback(s, event_panel[s].context) end
 	end
-
 	-- And return the number of events.
 	return table.getn(read_table) + table.getn(write_table)
 end

@@ -14,8 +14,7 @@
 
 module("_alua.netio")
 
-require("_alua.event")
-require("_alua.utils")
+require("_alua.event"); require("_alua.utils") -- Internal modules
 
 -- Transform an outgoing '<mode>, <header>, <arguments>' tuple into a string
 -- and send it on the given socket.
@@ -27,14 +26,10 @@ end
 -- Receive and parse incoming data into a '<command>, <arguments>' pair.
 function _alua.netio.recv(sock)
 	-- Read the packet from the socket.
-	local data, e = sock:receive()
-	if not data then return nil end
-	-- Safely load the chunk received.
-	data = "return { " .. data .. " }"
-	local f, e = loadstring(data)
-	if not f then return nil end
-	setfenv(f, {});
-	return f()
+	local data, e = sock:receive(); if not data then return nil end
+	data = "return { " .. data .. " }" -- Load the received chunk
+	local f, e = loadstring(data); if not f then return nil end
+	setfenv(f, {}); return f()
 end
 
 -- Handle an incoming request. Try to find a handler for it, and prepare a
@@ -68,9 +63,7 @@ function _alua.netio.reply(sock, context, incoming)
 	-- If this was our topmost sequence number, decrement it.
 	if reply.id == context.reqcount - 1 then
 		context.reqcount = reply.id - 1
-	end
-	-- Do it, finally.
-	if callback then callback(arguments) end
+	end; if callback then callback(arguments) end
 end
 
 -- Generic event handling function. Takes care of the sequence count, which is

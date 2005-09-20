@@ -19,44 +19,38 @@ m2 = {
 }
 
 -- Gets row 'i' of matrix 'm'.
-function
-getrow(m, i)
-	return (m[i])
+function getrow(m, i)
+	return m[i]
 end
 
 -- Gets column 'i' of matrix 'm'.
-function
-getcol(m, i)
+function getcol(m, i)
 	local col = {}
 	for _, v in m do table.insert(col, v[i]) end
-	return (col)
+	return col
 end
 
 -- Returns the number of rows in matrix 'm'.
-function
-cntrow(m)
-	return (table.getn(m))
+function cntrow(m)
+	return table.getn(m)
 end
 
 -- Returns the number of columns in matrix 'm'.
-function
-cntcol(m)
-	return (table.getn(m[1]))
+function cntcol(m)
+	return table.getn(m[1])
 end
 
 -- The following chunk will be sent to all processes.
 local lincom_buf = [[
 -- Returns the linear combination of a (row, column) tuple.
-function
-lincom(r, c)
+function lincom(r, c)
 	local ret = 0
 	for i, v in r do ret = ret + v*c[i] end
-	return (ret)
+	return ret
 end ]]
 
 -- Dumps a matrix on the screen.
-function
-mdump(m)
+function mdump(m)
 	for i = 1, cntrow(m) do
 		local row = getrow(m, i)
 		for _, v in row do io.write(v .. ", ") end
@@ -65,8 +59,7 @@ mdump(m)
 end
 
 -- Calculates a row of the resulting matrix, using a given process.
-function
-dorow(idx, p)
+function dorow(idx, p)
 	-- Define 'row' in the remote party.
 	alua.send(p, "row = " .. alua.tostring(getrow(m1, idx)))
 	alua.send(p, "ret = {}")
@@ -83,8 +76,7 @@ dorow(idx, p)
 end
 
 -- Stores a row in the resulting matrix.
-function
-strrow(r)
+function strrow(r)
 	idx = idx or 1
 	res = res or {}
 	res[idx] = r
@@ -102,8 +94,7 @@ strrow(r)
 end
 
 -- The all-powerful spawn callback.
-function
-spawn_callback(reply)
+function spawn_callback(reply)
 	procs = {}
 	-- Define lincom() in all processes.
 	for id in reply.processes do
@@ -114,6 +105,19 @@ spawn_callback(reply)
 	dorow(1, procs[1])
 end
 
+-- Callback for the link command.
+function link_callback(reply)
+	-- We spawn cntrow(m1) processes, and use them to
+	-- calculate each row of the resulting matrix.
+	alua.spawn(app, cntrow(m1), spawn_callback)
+end
+
+-- Callback for the start command.
+function start_callback(reply)
+	-- Link both daemons we are going to use.
+	alua.link(app, daemons, link_callback)
+end
+
 app = "matrix"
 daemons = { "127.0.0.1:1234", "127.0.0.1:4321" }
 -- The preamble of every ALua application.
@@ -121,9 +125,5 @@ alua = require("alua")
 alua.create({ port = 1234 })
 alua.create({ port = 4321 })
 alua.open({ port = 6080 })
-alua.link(daemons)
-alua.start(app)
--- We spawn cntrow(m1) processes, and use them to
--- calculate each row of the resulting matrix.
-alua.spawn(app, cntrow(m1), spawn_callback)
+alua.start(app, start_callback)
 alua.loop()

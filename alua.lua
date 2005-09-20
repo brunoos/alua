@@ -134,8 +134,8 @@ function alua.start(name, callback)
 end
 
 -- Link our daemon to other daemons.
-function alua.link(daemons, authfs, callback)
-	alua.command("link", { daemons = daemons, authfs = authfs }, callback)
+function alua.link(app, daemons, callback)
+	alua.command("link", { name = app, daemons = daemons }, callback)
 end
 
 -- Send a message to a (group of) process(es).
@@ -147,8 +147,8 @@ function alua.send(to, msg, callback, timeout)
 end
 
 -- Spawn new processes in an application.
-function alua.spawn(name, count, callback)
-	alua.command("spawn", { name = name, count = count }, callback)
+function alua.spawn(name, processes, callback)
+	alua.command("spawn", { name = name, processes = processes }, callback)
 end
 
 -- Query the daemon about a given application.
@@ -157,12 +157,12 @@ function alua.query(name, callback)
 end
 
 -- Connect to a daemon.
-function alua.connect(daemon, auth_callback)
+function alua.connect(daemon)
 	local socket, commands, callback, id, e
 	-- If we're already connected, error out.
 	if alua.socket then return nil, "Already connected" end
 	-- Otherwise, try connecting.
-	socket, id, e = _alua.daemon.connect(daemon, "process", auth_callback)
+	socket, id, e = _alua.daemon.connect_process(daemon)
 	if not socket then return nil, e end
 	-- Okay, we have a daemon. Prepare the environment.
 	alua.socket = socket
