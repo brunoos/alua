@@ -66,11 +66,9 @@ function alua.loop()
 end
 
 -- Terminate a process.
-function alua.exit(processes, callback, code)
-	-- If no processes were given, terminate the caller.
-	if not processes then alua.close(); os.exit(code) end
-	-- Pass the termination call to the given processes.
-	alua.send(processes, "alua.exit()", callback)
+function alua.exit(to, code, callback)
+	if not to then os.exit(code) end; code = code or "nil"
+	alua.send(to, "alua.exit(nil, nil, " .. code .. ")", callback)
 end
 
 -- Functions for managing applications. We need to provide a special callback
