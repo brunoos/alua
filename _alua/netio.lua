@@ -33,22 +33,12 @@ function _alua.netio.recv(sock)
 end
 
 -- Handle an incoming request. Try to find a handler for it, and prepare a
--- reply function to be used by the handler. If a timeout was given, set up
--- a timer for it.
+-- reply function to be used by the handler.
 function _alua.netio.request(sock, context, incoming)
 	local request, arguments = incoming.request, incoming.arguments
-	local timer, timer_expired
 	local reply = function (body)
-		if timer_expired then return end
 		_alua.netio.send(sock,  "reply", { id = request.id }, body)
-		if timer then _alua.timer.del(timer) end
 	end
-	local timer_callback = function(t)
-		reply({ status = "error", error = "timeout" })
-		timer_expired = true -- Nullify reply()
-		_alua.timer.del(t)
-	end
-	timer = _alua.timer.add(timer_callback, request.timeout)
 	local handler = context.command_table[request.name]
 	handler(sock, context, arguments, reply)
 end
@@ -77,7 +67,7 @@ function _alua.netio.handler(sock, context)
 end
 
 -- Issue a protocol command, asynchronously.
-function _alua.netio.async(sock, cmd, arg, callback, timeout)
+function _alua.netio.async(sock, cmd, arg, callback)
 	-- Get the socket context.
 	local _, context = _alua.event.get(sock)
 	-- Arrange the socket's sequence record.
@@ -85,7 +75,7 @@ function _alua.netio.async(sock, cmd, arg, callback, timeout)
 	context.reqtable = context.reqtable or {}
 	-- Tag the request with the current sequence count, so that we can
 	-- identify the reply when it arrives (as the channel could be shared).
-	local req = { name = cmd, timeout = timeout, id = context.reqcount }
+	local req = { name = cmd, id = context.reqcount }
 	context.reqtable[context.reqcount] = callback
 	context.reqcount = context.reqcount + 1
 	_alua.netio.send(sock, "request", req, arg)

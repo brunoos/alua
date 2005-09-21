@@ -47,12 +47,12 @@ function alua.incoming_msg(sock, context, header, reply)
 end
 
 -- Auxiliary function for issuing commands to the daemon.
-function alua.command(type, arg, callback, timeout)
+function alua.command(type, arg, callback)
 	if not alua.socket then
 		if callback then -- error out
 			callback({ status = "error", error = "not connected" })
 		end
-	else _alua.netio.async(alua.socket, type, arg, callback, timeout) end
+	else _alua.netio.async(alua.socket, type, arg, callback) end
 end
 
 -- The main event loop of an ALua process.
@@ -107,8 +107,8 @@ end
 
 -- Send a message to a (group of) process(es).
 function alua.send(to, msg, callback, timeout)
-	alua.command("message", { to = to, len = string.len(msg) }, callback,
-	    timeout)
+	alua.command("message", { to = to, len = string.len(msg), timeout =
+				  timeout }, callback)
 	alua.socket:send(msg)
 end
 
