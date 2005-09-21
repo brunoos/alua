@@ -20,15 +20,13 @@ local function msg_delivery(context, header, msg, callback)
 		context.apptable = _alua.daemon.apptable end
 	for _, app in context.apptable do
 		local to = header.to; local s = app.processes[to]
-		if s then
-			local timer = _alua.timer.add(function(t)
-				callback({ to = to, status = "error",
-					   error = "timeout" })
-				_alua.timer.del(t) end, header.timeout)
+		if s then local timer = _alua.timer.add(function(t)
+			callback({ to = to, status = "error",
+				   error = "timeout" })
+			_alua.timer.del(t) end, header.timeout)
 			_alua.netio.async(s, "message", header, function(reply)
 				callback(reply); _alua.timer.del(timer) end)
-			s:send(msg) end
-	end
+			s:send(msg) end; end
 end
 
 -- Receive a message from a process and deliver it.
