@@ -36,6 +36,7 @@ end
 
 -- Poll for expirations.
 function _alua.timer.poll()
+	if not luatimer then return end
 	local tt = luatimer.timeoutAll() or {}
 	for _, t in tt do
 		local f = _alua.timer.active_table[t]
