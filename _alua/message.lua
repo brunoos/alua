@@ -12,7 +12,7 @@
 -- Message routines for the ALua daemon.
 module("_alua.daemon.message")
 
-require("_alua.netio") -- External modules
+require("_alua.netio")
 
 -- Auxiliary function for delivering a message to a process.
 local function msg_deliver(context, header, msg, callback)
