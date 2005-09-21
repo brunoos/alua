@@ -19,10 +19,15 @@ local function msg_delivery(context, header, msg, callback)
 	if context.command_table == _alua.daemon.command_table then
 		context.apptable = _alua.daemon.apptable end
 	for _, app in context.apptable do
-		local socket = app.processes[header.to]
-		if socket then
-			_alua.netio.async(socket, "message", header, callback)
-			socket:send(msg) end
+		local to = header.to; local s = app.processes[to]
+		if s then
+			local timer = _alua.timer.add(function(t)
+				callback({ to = to, status = "error",
+					   error = "timeout" })
+				_alua.timer.del(t) end, header.timeout)
+			_alua.netio.async(s, "message", header, function(reply)
+				callback(reply); _alua.timer.del(timer) end)
+			s:send(msg) end
 	end
 end
 
