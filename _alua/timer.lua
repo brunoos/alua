@@ -29,6 +29,7 @@ end
 
 -- Remove a timer.
 function _alua.timer.del(t)
+	if not luatimer then return end
 	luatimer.removeTimer(t)
 	_alua.timer.active_table[t] = nil
 	_alua.timer.active_count = _alua.timer.active_count - 1
