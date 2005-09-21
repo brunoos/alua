@@ -1,27 +1,31 @@
+-- public domain
 alua = require("alua")
 
-function
-send_callback(reply)
-  	for id, msg in reply do
-		if msg.status ~= "ok" then
-			print("Process " .. id .. " could not receive message")
-			print("Error: " .. msg.error)
-		else
-			print("Message sent to process " .. id)
-		end
-	end
+local procs, buf, app = {}, [[ print(alua.id .. " says hi!") ]], "my app"
+
+function send2_callback(reply)
+	print("reply table is " .. _alua.utils.dump(reply))
+	alua.exit(procs); alua.exit()
+end
+
+function send1_callback(reply)
+	print("reply table is " .. _alua.utils.dump(reply))
+	print("sending message to all processes at once...")
+	alua.send(procs, buf, send2_callback)
 end
 
 function
 spawn_callback(reply)
-  	for id, proc in reply.processes do
-		if proc.status == "ok" then
-			alua.send(id, [[ print("Hello World!") ]], send_callback)
-		end
+	print("sending message process by process...")
+	for id, proc in reply.processes do
+		alua.send(id, buf, send1_callback); table.insert(procs, id)
 	end
 end
 
+function start_callback(reply)
+	alua.spawn(app, 12, spawn_callback)
+end
+
 alua.open()
-alua.start("application y")
-alua.spawn("application y", 12, spawn_callback)
+alua.start(app, start_callback)
 alua.loop()
