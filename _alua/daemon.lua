@@ -214,7 +214,7 @@ function _alua.daemon.create(user_conf)
         if f > 0 then return _alua.daemon.self.hash end -- parent
         callback = { read = _alua.daemon.incoming_connection }
         _alua.event.add(_alua.daemon.self.socket, callback)
-        while true do _alua.event.loop() end -- XXX
+        while true do _alua.event.loop(); _alua.timer.poll() end
 end
 
 -- Connect to a daemon, as requested by the user.
