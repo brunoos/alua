@@ -15,7 +15,7 @@ module("_alua.daemon.message")
 require("_alua.netio") -- External modules
 
 -- Auxiliary function for delivering a message to a process.
-local function msg_delivery(context, header, msg, callback)
+local function msg_deliver(context, header, msg, callback)
 	if context.command_table == _alua.daemon.command_table then
 		context.apptable = _alua.daemon.apptable end
 	for _, app in context.apptable do
@@ -36,8 +36,8 @@ local function message_common(sock, context, header, reply, forwarding)
 	if type(header.to) == "table" and not forwarding then
 		for _, dest in header.to do -- fake new header
 			local newheader = header; newheader.to = dest
-			msg_delivery(context, newheader, msg, reply) end
-	else msg_delivery(context, header, msg, reply) end
+			msg_deliver(context, newheader, msg, reply) end
+	else msg_deliver(context, header, msg, reply) end
 end
 
 -- Receive a message from a process and deliver it.
