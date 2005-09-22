@@ -1,22 +1,17 @@
 -- $Id$
+-- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
+-- all rights reserved. part of the alua project.
 
--- Copyright (c) 2005 Pedro Martelletto <pedro@ambientworks.net>
--- All rights reserved.
---
--- This file is part of the ALua Project.
---
--- As a consequence, to every excerpt of code hereby obtained, the respective
--- project's licence applies. Detailed information regarding the licence used
--- in ALua can be found in the LICENCE file provided with this distribution.
---
--- Spawn routines for the ALua daemon.
 module("_alua.daemon.spawn")
 
-require("socket"); require("posix") -- External modules
-require("_alua.event"); require("_alua.netio"); -- Internal modules
+require("socket")
+require("posix")
+require("_alua.event")
+require("_alua.netio")
 
+-- loop for the spawned process
 local function spawn_loop(context, app, id, s2)
-	_alua.event.flush() -- Get rid of past events states
+	_alua.event.flush() -- get rid of past events states
 	local alua = require("alua")
 	alua.applications = {}; alua.applications[app.name] = true
 	alua.master = app.master; alua.parent = context.id
@@ -27,11 +22,11 @@ local function spawn_loop(context, app, id, s2)
 	alua.loop(); os.exit()
 end
 
--- Auxiliar function for spawning a new process.
+-- spawns a local process
 local function spawn(context, app, id)
 	local s1 = socket.bind("127.0.0.1", 0)
 	local s2 = socket.connect(s1:getsockname())
-	s1 = s1:accept() -- Simulate what socketpair() would do
+	s1 = s1:accept() -- simulate what socketpair() would do
 	local f = posix.fork()
 	if not f then -- fork() failed
 		s1:close(); s2:close(); return id, "error", "fork failed" end
@@ -39,7 +34,7 @@ local function spawn(context, app, id)
 	local _context = { apptable = { [app.name] = app }, id = id,
 			   command_table = _alua.daemon.process_command_table }
 	_alua.event.add(s1, { read = _alua.netio.handler }, _context)
-	app.processes[id] = s1; app.cache = nil -- Invalidate cache
+	app.processes[id] = s1; app.cache = nil -- invalidate cache
 	s2:close(); return id, "ok"
 end
 
@@ -48,9 +43,8 @@ local function spawn_local(context, master, app, name)
 	if app.processes[name] then
 		return name, "error", "name already in use" end
         local id, status, e = spawn(context, app, name)
-	if status == "ok" then -- Notify daemons of new process
-		for v, sock in app.daemons do
-			-- Don't notify ourselves
+	if status == "ok" then -- notify daemons of new process
+		for v, sock in app.daemons do -- don't notify ourselves
 			if v ~= _alua.daemon.self.hash  then
 				_alua.netio.async(sock, "notify",
 				{ app = app.name, id = id }) end
@@ -63,13 +57,12 @@ local function spawn_distribute(context, app, reply, spawn_table, entries)
 	local callback = function (spawn_reply)
 		for id, status in spawn_reply.processes do
 		reply_table.processes[id] = status end; entries = entries - 1
-		if entries == 0 then reply(reply_table) end -- Time to reply
+		if entries == 0 then reply(reply_table) end -- time to reply
 	end
-	for daemon, args in spawn_table do -- Send all the spawn requests
+	for daemon, args in spawn_table do -- send all the spawn requests
 		local sock = app.daemons[daemon]
 		args.app = app.name; args.parent = context.id
-		_alua.netio.async(sock, "spawn", args, callback)
-	end
+		_alua.netio.async(sock, "spawn", args, callback) end
 end
 
 local function spawn_get_names(names, count)
@@ -85,7 +78,7 @@ local function spawn_prepare_table(context, argument, reply, app)
 	local perdaemon = math.floor(count / app.ndaemons)
 	local mod, entries = math.mod(count, app.ndaemons), 0
 	local remaining = argument.names
-	for daemon in app.daemons do -- Fill in the spawn table
+	for daemon in app.daemons do -- fill in the spawn table
 		local entry = { count = perdaemon }
 		if mod > 0 then entry.count = entry.count + 1; mod = mod - 1 end
 		remaining, entry.names = spawn_get_names(remaining, entry.count)
@@ -112,7 +105,7 @@ end
 
 function _alua.daemon.spawn.from_process(sock, context, argument, reply)
 	local app = _alua.daemon.verify_proc_app(context, argument.name, reply)
-	if not app then return end -- Process not in application, bye
+	if not app then return end -- process not in application
 	if type(argument.processes) == "number" then
 		spawn_prepare_table(context, argument, reply, app)
 	elseif type(argument.processes) == "table" then

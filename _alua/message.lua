@@ -1,20 +1,12 @@
 -- $Id$
---
--- Copyright (c) 2005 Pedro Martelletto <pedro@ambientworks.net>
--- All rights reserved.
---
--- This file is part of the ALua Project.
---
--- As a consequence, to every excerpt of code hereby obtained, the respective
--- project's licence applies. Detailed information regarding the licence used
--- in ALua can be found in the LICENCE file provided with this distribution.
---
--- Message routines for the ALua daemon.
+-- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
+-- all rights reserved. part of the alua project.
+
 module("_alua.daemon.message")
 
 require("_alua.netio")
 
--- Auxiliary function for delivering a message to a process.
+-- deliver a message to a process
 local function msg_deliver(context, header, msg, callback)
 	if context.command_table == _alua.daemon.command_table then
 		context.apptable = _alua.daemon.apptable end
@@ -29,7 +21,7 @@ local function msg_deliver(context, header, msg, callback)
 			s:send(msg) end; end
 end
 
--- Receive a message from a process and deliver it.
+-- receive a message from a process and forward it
 local function message_common(sock, context, header, reply, forwarding)
 	local msg, e = sock:receive(header.len)
 	if not header.from then header.from = context.id end
@@ -40,7 +32,7 @@ local function message_common(sock, context, header, reply, forwarding)
 	else msg_deliver(context, header, msg, reply) end
 end
 
--- Receive a message from a process and deliver it.
+-- process handler for the 'message' request
 function _alua.daemon.message.from_process(sock, context, header, reply)
 	local done, _reply, to = {}, {}, header.to
 	local count = type(to) == "table" and table.getn(to) or 1
@@ -50,6 +42,7 @@ function _alua.daemon.message.from_process(sock, context, header, reply)
 	end; message_common(sock, context, header, reply_callback, false)
 end
 
+-- daemon handler for the 'message' request
 function _alua.daemon.message.from_daemon(sock, context, header, reply)
 	local reply_callback = function (__reply) reply(__reply) end
 	message_common(sock, context, header, reply_callback, true)
