@@ -23,37 +23,31 @@ require("_alua.utils")
 require("_alua.spawn")
 require("_alua.message")
 
-_alua.daemon.daemontable = {}
+daemontable = {}
 
--- Generate a new process ID.
+local idcount = 0 -- count of local processes
+
+-- generate a new process id
 function _alua.daemon.get_new_process_id()
-	idcount = idcount or 0 -- Count of local processes
 	local id = string.format("%s:%u", _alua.daemon.self.hash, idcount)
 	idcount = idcount + 1; return id
 end
 
--- Get a connection with a daemon.
+-- get a connection with a daemon
 function _alua.daemon.get(hash, callback)
-	if _alua.daemon.daemontable[hash] then -- Already connected
-		if callback then callback(_alua.daemon.daemontable[hash]) end
-		return _alua.daemon.daemontable[hash]
-	else
-		local s, e = socket.connect(_alua.daemon.unhash(hash))
-		local _context = { command_table = _alua.daemon.command_table }
-        	local _callback = { read = _alua.netio.handler }
-		_alua.event.add(s, _callback, _context)
-		if callback then -- Operate asynchronously
-			local f = function (reply) callback(s) end
-			_alua.netio.async(s, "auth", { mode = "daemon", id =
-						       _alua.daemon.self.hash },
-			 f)
-		else -- Operate synchronously
-			if not s then return nil, e end
-			_alua.netio.sync(s, "auth", { mode = "daemon", id =
-						      _alua.daemon.self.hash })
-		end; _alua.daemon.daemontable[hash] = s
-		return _alua.daemon.daemontable[hash] 
-	end
+	local s = daemontable[hash]; if s then -- already connected
+		if callback then callback(s) end; return s; end
+	local s, e = socket.connect(_alua.daemon.unhash(hash))
+	local _context = { command_table = _alua.daemon.command_table }
+	local _callback = { read = _alua.netio.handler }
+	_alua.event.add(s, _callback, _context); if callback then -- async
+		local f = function (reply) callback(s) end
+		_alua.netio.async(s, "auth", { mode = "daemon", id =
+					       _alua.daemon.self.hash }, f)
+	else if not s then return nil, e end;
+		_alua.netio.sync(s, "auth", { mode = "daemon", id =
+					     _alua.daemon.self.hash })
+	end; daemontable[hash] = s; return s
 end
 
 -- Hash an (address, port, id) set.
