@@ -1,15 +1,6 @@
 -- $Id$
---
--- Copyright (c) 2005 Pedro Martelletto <pedro@ambientworks.net>
--- All rights reserved.
---
--- This file is part of the Alua Project.
---
--- As a consequence, to every excerpt of code hereby obtained, the respective
--- project's licence applies. Detailed information regarding the licence used
--- in Alua can be found in the LICENCE file provided with this distribution.
-
--- Timer support. Use LuaTimer to do the hard job, bind an API to Alua.
+-- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
+-- all rights reserved. part of the alua project.
 
 module("_alua.timer")
 
