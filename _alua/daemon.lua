@@ -1,21 +1,14 @@
 -- $Id$
---
--- Copyright (c) 2005 Pedro Martelletto <pedro@ambientworks.net>
--- All rights reserved.
---
--- This file is part of the ALua Project.
---
--- As a consequence, to every excerpt of code hereby obtained, the respective
--- project's licence applies. Detailed information regarding the licence used
--- in ALua can be found in the LICENCE file provided with this distribution.
---
--- Main body for the ALua daemon.
+-- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
+-- all rights reserved. part of the alua project.
+
 module("_alua.daemon")
 
--- External modules
+-- external modules
 require("socket")
 require("posix")
--- Internal modules
+
+-- internal modules
 require("_alua.app")
 require("_alua.event")
 require("_alua.netio")
