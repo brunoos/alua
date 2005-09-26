@@ -16,7 +16,7 @@ function _alua.channel.client(host, port, read, write, close, s)
 	end
 	local read_callback, write_callback
 	read_callback = function (sock, context)
-		local pattern, data = context.pattern,sock:receive(pattern)
+		local pattern, data = context.pattern, sock:receive(pattern)
 		if not data then return _alua.event.del(sock) end
 		read(sock, data)
 	end
