@@ -2,9 +2,6 @@
 -- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
 -- all rights reserved. part of the alua project.
 
--- a small and generic event abstraction layer used by both processes and
--- daemons. every event has its own context and an associated handler.
-
 module("_alua.event")
 
 require("socket") -- external modules
