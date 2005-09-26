@@ -50,13 +50,13 @@ function _alua.daemon.get(hash, callback)
 	end; daemontable[hash] = s; return s
 end
 
--- Hash an (address, port, id) set.
+-- hash an (address, port, id) set
 function _alua.daemon.hash(addr, port)
         if addr == "0.0.0.0" then addr = "127.0.0.1" end -- workaround
         return string.format("%s:%u", addr, port)
 end
 
--- Produce a (address, port, id) set out of hash.
+-- unhash a (address, port, id) set
 function _alua.daemon.unhash(hash)
         local _, i_, addr, port, id = string.find(hash, "(%d.+):(%d+)")
         return addr, tonumber(port), id
