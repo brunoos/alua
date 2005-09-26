@@ -16,33 +16,20 @@ module("_alua.daemon")
 require("socket")
 require("posix")
 -- Internal modules
+require("_alua.app")
 require("_alua.event")
 require("_alua.netio")
 require("_alua.utils")
 require("_alua.spawn")
 require("_alua.message")
 
-_alua.daemon.apptable, _alua.daemon.daemontable = {}, {}
+_alua.daemon.daemontable = {}
 
 -- Generate a new process ID.
 function _alua.daemon.get_new_process_id()
 	idcount = idcount or 0 -- Count of local processes
 	local id = string.format("%s:%u", _alua.daemon.self.hash, idcount)
 	idcount = idcount + 1; return id
-end
-
--- Makes sure a process is in an application.
-function _alua.daemon.verify_proc_app(context, appname, reply)
-	local app = _alua.daemon.apptable[appname]
-	if not app then
-		reply({ name = appname, stats = "error",
-			error = "application does not exist" })
-		return nil end
-	if not context.apptable[appname] then
-		reply({ name = appname, status = "error",
-			error = "not in such application" })
-		return nil end
-	return app
 end
 
 -- Get a connection with a daemon.
@@ -81,47 +68,9 @@ function _alua.daemon.unhash(hash)
         return addr, tonumber(port), id
 end
 
--- Check if a given application exists.
-local function process_query(sock, context, argument, reply)
-	-- Look up the application.
-	local app = _alua.daemon.apptable[argument.name]
-	if not app then return reply({ name = argument.name }) end
-	-- To avoid constructing the same tables again and again, keep a cache
-	-- which is invalidated everytime a new process comes in or leaves.
-	if not app.cache then
-		-- Construct the tables, and cache them.
-		local processes, daemons = {}, {}
-		for i in pairs(app.processes) do table.insert(processes, i) end
-		app.cache = { processes = processes, daemons = daemons }
-		app.cache.name = argument.name; app.cache.master = app.master
-	end
-	reply({ master = app.cache.master, name = app.cache.name,
-		processes = app.cache.processes, daemons = app.cache.daemons })
-end
-
--- Start a new application.
-local function process_start(sock, context, argument, reply)
-	-- Make sure the application does not exist.
-	local app = _alua.daemon.apptable[argument.name]
-	if app then reply({ name = argument.name, status = "error",
-	error = "application already exists" }) return end
-	-- Initialize the object that is going to represent it.
-	-- Insert the master in the process table.
-	app = { master = context.id, processes = {}, name = argument.name }
-	app.processes[app.master] = sock
-	_alua.daemon.apptable[argument.name] = app
-	context.apptable[argument.name] = app
-	local callback = function (s)
-		app.ndaemons = 1; app.daemons = {};
-		app.daemons[_alua.daemon.self.hash] = s
-		reply({ name = argument.name, status = "ok" })
-	end
-	_alua.daemon.get(_alua.daemon.self.hash, callback)
-end
-
 -- Extend our network of daemons.
 local function process_link(sock, context, argument, reply, noforward)
-	local app = _alua.daemon.verify_proc_app(context, argument.name, reply)
+	local app = _alua.daemon.app.verify_proc(context, argument.name, reply)
 	if not app then return nil end -- Process not in application, bye
 	local _reply = { daemons = {}, status = "ok" }
 	for _, hash in argument.daemons or {} do
@@ -142,7 +91,7 @@ local function daemon_link(sock, context, argument, reply)
 	local app = { master = argument.master, processes = {},
 		      name = argument.name }
 	app.processes[app.master] = sock
-	_alua.daemon.apptable[argument.name] = app
+	_alua.daemon.app.apptable[argument.name] = app
 	context.apptable[argument.name] = app
 	local callback = function (s)
 		app.ndaemons = 1; app.daemons = {};
@@ -154,23 +103,23 @@ end
 
 -- A daemon is telling us about a new process belonging to it.
 local function daemon_notify(sock, context, argument, reply)
-	local app = _alua.daemon.apptable[argument.app]
+	local app = _alua.daemon.app.apptable[argument.app]
 	app.processes[argument.id] = sock; app.cache = nil -- Invalidate cache
 end
 
 -- Associate a process with an application.
 local function process_join(sock, context, argument, reply)
-	local app = _alua.daemon.verify_proc_app(context, argument.name, reply)
+	local app = _alua.daemon.app.verify_proc(context, argument.name, reply)
 	if not app then return end -- Process not in application, bye
 	context.apptable[argument.name] = app
 	app.processes[context.id] = sock; app.cache = nil -- Invalidate cache
 	--- XXX: Should notify other daemons as well
-	process_query(sock, context, { name = argument.name }, reply)
+	_alua.daemon.app.query(sock, context, { name = argument.name }, reply)
 end
 
 -- Leave an application.
 local function process_leave(sock, context, argument, reply)
-	local app = _alua.daemon.verify_proc_app(context, argument.name, reply)
+	local app = _alua.daemon.app.verify_proc(context, argument.name, reply)
 	if not app then return end -- Process not in application, bye
 	app.processes[context.id] = nil; context.apptable[argument.name] = nil
 	app.cache = nil -- Invalidate cache
@@ -229,8 +178,8 @@ end
 _alua.daemon.process_command_table = {
 	["link"] = process_link,
 	["join"] = process_join,
-	["start"] = process_start,
-	["query"] = process_query,
+	["start"] = _alua.daemon.app.start,
+	["query"] = _alua.daemon.app.query,
 	["spawn"] = _alua.daemon.spawn.from_process,
 	["message"] = _alua.daemon.message.from_process,
 	["leave"] = process_leave,

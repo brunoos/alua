@@ -4,12 +4,13 @@
 
 module("_alua.daemon.message")
 
+require("_alua.app")
 require("_alua.netio")
 
 -- deliver a message to a process
 local function msg_deliver(context, header, msg, callback)
 	if context.command_table == _alua.daemon.command_table then
-		context.apptable = _alua.daemon.apptable end
+		context.apptable = _alua.daemon.app.apptable end
 	for _, app in context.apptable do
 		local to = header.to; local s = app.processes[to]
 		if s then local timer = _alua.timer.add(function(t)

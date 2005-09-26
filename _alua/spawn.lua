@@ -6,6 +6,7 @@ module("_alua.daemon.spawn")
 
 require("socket")
 require("posix")
+require("_alua.app")
 require("_alua.event")
 require("_alua.netio")
 
@@ -104,7 +105,7 @@ local function spawn_by_name(context, argument, reply, app)
 end
 
 function _alua.daemon.spawn.from_process(sock, context, argument, reply)
-	local app = _alua.daemon.verify_proc_app(context, argument.name, reply)
+	local app = _alua.daemon.app.verify_proc(context, argument.name, reply)
 	if not app then return end -- process not in application
 	if type(argument.processes) == "number" then
 		spawn_prepare_table(context, argument, reply, app)
@@ -116,7 +117,7 @@ function _alua.daemon.spawn.from_process(sock, context, argument, reply)
 end
 
 function _alua.daemon.spawn.from_daemon(sock, context, argument, reply)
-	local app, processes = _alua.daemon.apptable[argument.app], {}
+	local app, processes = _alua.daemon.app.apptable[argument.app], {}
 	for i = argument.count, 1, - 1 do
 		local id, status, e = spawn_local(context, argument.master,
 						  app, argument.names[i])
