@@ -42,3 +42,12 @@ function _alua.daemon.app.start(sock, context, argument, reply)
 		reply({ name = name, status = "ok" })
 	end; _alua.daemon.get(_alua.daemon.self.hash, callback)
 end
+
+-- process is leaving an application
+function _alua.daemon.app.leave(sock, context, argument, reply)
+	local name, app = argument.name, _alua.daemon.app.apptable[name]
+	if not app then return end -- process not in application
+	app.processes[context.id] = nil; context.apptable[name] = nil
+	app.cache = nil -- process left, invalidate cache
+	reply({ name = name, status = "ok" })
+end

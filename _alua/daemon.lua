@@ -117,16 +117,6 @@ local function process_join(sock, context, argument, reply)
 	_alua.daemon.app.query(sock, context, { name = argument.name }, reply)
 end
 
--- Leave an application.
-local function process_leave(sock, context, argument, reply)
-	local app = _alua.daemon.app.verify_proc(context, argument.name, reply)
-	if not app then return end -- Process not in application, bye
-	app.processes[context.id] = nil; context.apptable[argument.name] = nil
-	app.cache = nil -- Invalidate cache
-	--- XXX: Should notify other daemons as well
-	reply({ name = argument.name, status = "ok" })
-end
-
 -- Authenticate a remote endpoint, either as a process or a daemon.
 local function proto_auth(sock, context, argument, reply)
 	context.mode = argument.mode; context.apptable = {}
