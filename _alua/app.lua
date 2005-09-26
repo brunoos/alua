@@ -43,6 +43,18 @@ function _alua.daemon.app.start(sock, context, argument, reply)
 	end; _alua.daemon.get(_alua.daemon.self.hash, callback)
 end
 
+-- associate a process with an application
+function _alua.daemon.app.join(sock, context, argument, reply)
+	local name, app = argument.name, _alua.daemon.app.apptable[name]
+	if not app then return reply({ name = name, status = "error", error =
+				       "application does not exist" }) end
+	if context.apptable[name] then return reply({ name = name, status =
+				"error", error = "already in application" }) end
+	context.apptable[name] = app; app.processes[context.id] = sock
+	app.cache = nil -- new process, invalidate cache
+	_alua.daemon.app.query(sock, context, { name = name }, reply)
+end
+
 -- process is leaving an application
 function _alua.daemon.app.leave(sock, context, argument, reply)
 	local name, app = argument.name, _alua.daemon.app.apptable[name]

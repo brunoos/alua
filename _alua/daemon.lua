@@ -101,16 +101,6 @@ local function daemon_notify(sock, context, argument, reply)
 	app.processes[argument.id] = sock; app.cache = nil -- Invalidate cache
 end
 
--- Associate a process with an application.
-local function process_join(sock, context, argument, reply)
-	local app = _alua.daemon.app.verify_proc(context, argument.name, reply)
-	if not app then return end -- Process not in application, bye
-	context.apptable[argument.name] = app
-	app.processes[context.id] = sock; app.cache = nil -- Invalidate cache
-	--- XXX: Should notify other daemons as well
-	_alua.daemon.app.query(sock, context, { name = argument.name }, reply)
-end
-
 -- Authenticate a remote endpoint, either as a process or a daemon.
 local function proto_auth(sock, context, argument, reply)
 	context.mode = argument.mode; context.apptable = {}
@@ -161,7 +151,7 @@ end
 
 _alua.daemon.process_command_table = {
 	["link"] = process_link,
-	["join"] = process_join,
+	["join"] = _alua.daemon.app.join,
 	["start"] = _alua.daemon.app.start,
 	["query"] = _alua.daemon.app.query,
 	["spawn"] = _alua.daemon.spawn.from_process,
