@@ -4,21 +4,19 @@
 
 module("_alua.channel")
 
-require("socket") -- External modules
-require("_alua.event") -- Internal modules
+require("socket") -- external modules
+require("_alua.event") -- internal modules
 
--- Create a client channel.
+-- create a client channel
 function _alua.channel.client(host, port, read, write, close, s)
-	-- Dirty hack so we can reuse this function. Bad, bad Pedro.
+	-- dirty hack so we can reuse this function. bad, bad pedro...
 	if not s then
 		s, e = socket.connect(host, port)
 		if not s then return nil, e end
 	end
-	-- Prepare callback functions for the read and write operations.
 	local read_callback, write_callback
 	read_callback = function (sock, context)
-		local pattern = context.pattern
-		local data = sock:receive(pattern)
+		local pattern, data = context.pattern,sock:receive(pattern)
 		if not data then return _alua.event.del(sock) end
 		read(sock, data)
 	end
@@ -30,31 +28,29 @@ function _alua.channel.client(host, port, read, write, close, s)
 	return s
 end
 
--- Create a server channel.
+-- create a server channel
 function _alua.channel.server(port, read, write, conn, close)
-	-- Bind the socket.
 	local s, e = socket.bind("*", port)
 	if not s then return nil, e end
-	-- Prepare a special callback for the server.
-	local callback = function (sock, context)
+	local callback = function (sock, context) -- prepare special callback
 		local s = conn(sock)
-		if s then -- New 'child' channel, handle it.
+		if s then -- new 'child' channel, handle it
 			client(nil, nil, read, write, close, s) end
 	end; _alua.event.add(s, { read = callback }, { terminator = close })
 	return s
 end
 
--- Close a channel.
+-- close a channel
 function _alua.channel.close(sock)
-	_alua.event.del(sock) -- Just remove the event
+	_alua.event.del(sock) -- just remove the event
 end
  
--- Get the pattern being used for a given channel.
+-- get the pattern being used for a given channel
 function _alua.channel.getpattern(sock)
 	local _, context = _alua.event.get(sock); return context.pattern
 end
 
--- Set the pattern to be used for a given channel.
+-- set the pattern to be used for a given channel
 function _alua.channel.setpattern(sock, pattern)
 	local _, context = _alua.event.get(sock); context.pattern = pattern
 end
