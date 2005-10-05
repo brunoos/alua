@@ -57,7 +57,7 @@ end
 
 -- process is leaving an application
 function _alua.daemon.app.leave(sock, context, argument, reply)
-	local nam = argument.name; local app = _alua.daemon.app.apptable[name]
+	local name = argument.name; local app = _alua.daemon.app.apptable[name]
 	if not app then return end -- process not in application
 	app.processes[context.id] = nil; context.apptable[name] = nil
 	app.cache = nil -- process left, invalidate cache
