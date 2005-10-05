@@ -63,3 +63,9 @@ function _alua.daemon.app.leave(sock, context, argument, reply)
 	app.cache = nil -- process left, invalidate cache
 	reply({ name = name, status = "ok" })
 end
+
+-- get information about an incoming/leaving process
+function _alua.daemon.app.notify(sock, context, argument, reply)
+	local app = _alua.daemon.app.apptable[argument.app]
+	app.processes[argument.id] = sock; app.cache = nil -- invalidate cache
+end

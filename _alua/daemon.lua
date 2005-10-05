@@ -88,12 +88,6 @@ local function daemon_link(sock, context, argument, reply)
 	end; _alua.daemon.get(_alua.daemon.self.hash, callback)
 end
 
--- A daemon is telling us about a new process belonging to it.
-local function daemon_notify(sock, context, argument, reply)
-	local app = _alua.daemon.app.apptable[argument.app]
-	app.processes[argument.id] = sock; app.cache = nil -- Invalidate cache
-end
-
 -- Authenticate a remote endpoint, either as a process or a daemon.
 local function proto_auth(sock, context, argument, reply)
 	context.mode = argument.mode; context.apptable = {}
@@ -155,7 +149,7 @@ _alua.daemon.process_command_table = {
 _alua.daemon.command_table = {
 	["link"] = daemon_link,
 	["spawn"] = _alua.daemon.spawn.from_daemon,
-	["notify"] = daemon_notify,
+	["notify"] = _alua.daemon.app.notify,
 	["message"] = _alua.daemon.message.from_daemon,
 }
 
