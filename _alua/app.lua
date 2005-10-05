@@ -19,7 +19,7 @@ end
 
 -- check if an application exists
 function _alua.daemon.app.query(sock, context, argument, reply)
-	local name, app = argument.name, _alua.daemon.app.apptable[name]
+	local name = argument.name; local app = _alua.daemon.app.apptable[name]
 	if not app then return reply({ name = name, status = "ok" }) end
 	if not app.cache then -- keep a cache of processes and daemons
 		local processes, daemons = {}, {}
@@ -31,7 +31,7 @@ end
 
 -- start a new application
 function _alua.daemon.app.start(sock, context, argument, reply)
-	local name, app = argument.name, _alua.daemon.app.apptable[name]
+	local name = argument.name; local app = _alua.daemon.app.apptable[name]
 	if app then return reply({ name = name, status = "error",
 				   error = "application already exists" }) end
 	app = { master = context.id, processes = {}, name = name }
@@ -45,7 +45,7 @@ end
 
 -- associate a process with an application
 function _alua.daemon.app.join(sock, context, argument, reply)
-	local name, app = argument.name, _alua.daemon.app.apptable[name]
+	local name = argument.name; local app = _alua.daemon.app.apptable[name]
 	if not app then return reply({ name = name, status = "error", error =
 				       "application does not exist" }) end
 	if context.apptable[name] then return reply({ name = name, status =
@@ -57,7 +57,7 @@ end
 
 -- process is leaving an application
 function _alua.daemon.app.leave(sock, context, argument, reply)
-	local name, app = argument.name, _alua.daemon.app.apptable[name]
+	local nam = argument.name; local app = _alua.daemon.app.apptable[name]
 	if not app then return end -- process not in application
 	app.processes[context.id] = nil; context.apptable[name] = nil
 	app.cache = nil -- process left, invalidate cache
