@@ -54,7 +54,7 @@ local function spawn_local(context, master, app, name)
 end
 
 local function spawn_distribute(context, app, reply, spawn_table, entries)
-	local reply_table = { processes = {} }
+	local reply_table = { name = app.name, processes = {} }
 	local callback = function (spawn_reply)
 		for id, status in spawn_reply.processes do
 		reply_table.processes[id] = status end; entries = entries - 1
