@@ -143,7 +143,7 @@ _alua.daemon.process_command_table = {
 	["query"] = _alua.daemon.app.query,
 	["spawn"] = _alua.daemon.spawn.from_process,
 	["message"] = _alua.daemon.message.from_process,
-	["leave"] = process_leave,
+	["leave"] = _alua.daemon.app.leave,
 }
 
 _alua.daemon.command_table = {
