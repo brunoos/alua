@@ -19,7 +19,8 @@ local function msg_deliver(context, header, msg, callback)
 			_alua.timer.del(t) end, header.timeout)
 			_alua.netio.async(s, "message", header, function(reply)
 				callback(reply); _alua.timer.del(timer) end)
-			s:send(msg) end; end
+			s:send(msg) else callback({ to = to, status = "error",
+				error = "process not found" }) end; end
 end
 
 -- receive a message from a process and forward it
