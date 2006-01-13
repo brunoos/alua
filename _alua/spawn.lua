@@ -45,7 +45,7 @@ local function spawn_local(context, master, app, name)
 		return name, "error", "name already in use" end
         local id, status, e = spawn(context, app, name)
 	if status == "ok" then -- notify daemons of new process
-		for v, sock in app.daemons do -- don't notify ourselves
+		for v, sock in pairs(app.daemons) do -- don't notify ourselves
 			if v ~= _alua.daemon.self.hash  then
 				_alua.netio.async(sock, "notify",
 				{ app = app.name, id = id }) end
@@ -56,11 +56,11 @@ end
 local function spawn_distribute(context, app, reply, spawn_table, entries)
 	local reply_table = { name = app.name, processes = {} }
 	local callback = function (spawn_reply)
-		for id, status in spawn_reply.processes do
+		for id, status in pairs(spawn_reply.processes) do
 		reply_table.processes[id] = status end; entries = entries - 1
 		if entries == 0 then reply(reply_table) end -- time to reply
 	end
-	for daemon, args in spawn_table do -- send all the spawn requests
+	for daemon, args in pairs(spawn_table) do -- send all the spawn requests
 		local sock = app.daemons[daemon]
 		args.app = app.name; args.parent = context.id
 		_alua.netio.async(sock, "spawn", args, callback) end
@@ -79,7 +79,7 @@ local function spawn_prepare_table(context, argument, reply, app)
 	local perdaemon = math.floor(count / app.ndaemons)
 	local mod, entries = math.mod(count, app.ndaemons), 0
 	local remaining = argument.names
-	for daemon in app.daemons do -- fill in the spawn table
+	for daemon in pairs(app.daemons) do -- fill in the spawn table
 		local entry = { count = perdaemon }
 		if mod > 0 then entry.count = entry.count + 1; mod = mod - 1 end
 		remaining, entry.names = spawn_get_names(remaining, entry.count)
@@ -89,7 +89,7 @@ end
 
 local function spawn_by_table(context, argument, reply, app)
 	local spawn_table, daemons, entries = {}, argument.processes, 0
-	for daemon, processes in daemons do
+	for daemon, processes in pairs(daemons) do
 		entries = entries + 1
 		if type(processes) == "number" then
 			spawn_table[daemon] = { count = processes, names = {} }

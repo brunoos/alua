@@ -60,7 +60,7 @@ local function process_link(sock, context, argument, reply, noforward)
 	local app = _alua.daemon.app.verify_proc(context, argument.name, reply)
 	if not app then return nil end -- Process not in application, bye
 	local _reply = { daemons = {}, status = "ok" }
-	for _, hash in argument.daemons or {} do
+	for _, hash in pairs(argument.daemons or {}) do
 		local sock, id, e = _alua.daemon.get(hash)
 		if not sock then _reply.daemons[hash] = e
 		else	_reply.daemons[hash] = "ok"; app.daemons[hash] = sock;

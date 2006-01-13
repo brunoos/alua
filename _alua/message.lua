@@ -11,7 +11,7 @@ require("_alua.netio")
 local function msg_deliver(context, header, msg, callback)
 	if context.command_table == _alua.daemon.command_table then
 		context.apptable = _alua.daemon.app.apptable end
-	for _, app in context.apptable do
+	for _, app in pairs(context.apptable) do
 		local to = header.to; local s = app.processes[to]
 		if s then local timer = _alua.timer.add(function(t)
 			callback({ to = to, status = "error",
@@ -28,7 +28,7 @@ local function message_common(sock, context, header, reply, forwarding)
 	local msg, e = sock:receive(header.len)
 	if not header.from then header.from = context.id end
 	if type(header.to) == "table" and not forwarding then
-		for _, dest in header.to do -- fake new header
+		for _, dest in pairs(header.to) do -- fake new header
 			local newheader = header; newheader.to = dest
 			msg_deliver(context, newheader, msg, reply) end
 	else msg_deliver(context, header, msg, reply) end

@@ -116,7 +116,7 @@ end
 function alua.close(arg)
 	if arg then return _alua.channel.close(arg) end
 	if not alua.socket then return nil, "not connected" end
-	for _, app in alua.applications do alua.leave(app) end
+	for _, app in pairs(alua.applications) do alua.leave(app) end
 	_alua.event.del(alua.socket)
 	alua.applications = {} -- reset alua.applications now
 	alua.socket = nil; alua.daemon = nil; alua.id = nil
