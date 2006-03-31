@@ -51,7 +51,7 @@ end
 
 -- unhash a (address, port, id) set
 function _alua.daemon.unhash(hash)
-        local _, i_, addr, port, id = string.find(hash, "(%d.+):(%d+)")
+        local _, _, addr, port, id = string.find(hash, "(%d.+):(%d+)")
         return addr, tonumber(port), id
 end
 
