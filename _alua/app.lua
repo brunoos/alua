@@ -13,13 +13,13 @@ function _alua.daemon.app.verify_proc(context, appname, reply)
 
 	if not app then
 		reply({ name = appname, status = "error",
-			error = "application does not exist" })
+		    error = "application does not exist" })
 	end
 
 	if not context.apptable[appname] then
 		app = nil
 		reply({ name = appname, status = "error",
-			error = "not in such application" })
+		    error = "not in such application" })
 	end
 
 	return app
@@ -57,7 +57,7 @@ function _alua.daemon.app.start(sock, context, argument, reply)
 
 	if app then
 		return reply({ name = name, status = "error",
-			       error = "application already exists" })
+		    error = "application already exists" })
 	end
 
 	app = { master = context.id, processes = {}, name = name }
@@ -82,12 +82,12 @@ function _alua.daemon.app.join(sock, context, argument, reply)
 
 	if not app then
 		return reply({ name = name, status = "error",
-			       error = "application does not exist" })
+		    error = "application does not exist" })
 	end
 
 	if context.apptable[name] then
 		return reply({ name = name, status = "error",
-			       error = "already in application" })
+		    error = "already in application" })
 	end
 
 	context.apptable[name] = app
