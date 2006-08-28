@@ -41,33 +41,6 @@ function alua.exit(to, code, callback)
 	alua.send(to, "alua.exit(nil, nil, " .. code .. ")", callback)
 end
 
--- functions for managing applications; we need to provide a special callback
--- so that we can change the 'applications' table accordingly
-
--- leave an application
-function alua.leave(name, callback)
-	local leave_callback = function(reply)
-		if reply.status == "ok" then alua.applications[name] = nil end
-		if callback then callback(reply) end
-	end; alua.command("leave", { name = name }, leave_callback)
-end
-
--- join an application
-function alua.join(name, callback)
-	local join_callback = function(reply)
-		if reply.status == "ok" then alua.applications[name] = true end
-		if callback then callback(reply) end
-	end; alua.command("join", { name = name }, join_callback)
-end
-
--- start an application
-function alua.start(name, callback)
-	local start_callback = function(reply)
-		if reply.status == "ok" then alua.applications[name] = true end
-		if callback then callback(reply) end
-	end; alua.command("start", { name = name }, start_callback)
-end
-
 -- link daemons to daemons
 function alua.link(app, daemons, callback)
 	alua.command("link", { name = app, daemons = daemons }, callback)
