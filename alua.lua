@@ -42,8 +42,8 @@ function alua.exit(to, code, callback)
 end
 
 -- link daemons to daemons
-function alua.link(app, daemons, callback)
-	alua.command("link", { name = app, daemons = daemons }, callback)
+function alua.link(daemons, callback)
+	alua.command("link", { daemons = daemons }, callback)
 end
 
 -- send a message to a (set of) process(es)
@@ -53,9 +53,9 @@ function alua.send(to, msg, callback, timeout)
 	alua.socket:send(msg)
 end
 
--- spawn new processes in an application
-function alua.spawn(name, processes, callback)
-	alua.command("spawn", { name = name, processes = processes }, callback)
+-- spawn new processes
+function alua.spawn(processes, callback)
+	alua.command("spawn", { processes = processes }, callback)
 end
 
 -- connect to a daemon. operates synchronously
@@ -84,16 +84,13 @@ end
 function alua.close(arg)
 	if arg then return _alua.channel.close(arg) end
 	if not alua.socket then return nil, "not connected" end
-	for _, app in pairs(alua.applications) do alua.leave(app) end
 	_alua.event.del(alua.socket)
-	alua.applications = {} -- reset alua.applications now
 	alua.socket = nil; alua.daemon = nil; alua.id = nil
 end
 
 -- prepare the 'alua' table
 alua.create = _alua.daemon.create
 alua.tostring = _alua.utils.dump
-alua.applications = {}
 -- provide simple shells for the timer functions
 alua.timeradd = _alua.timer.add
 alua.timerdel = _alua.timer.del
