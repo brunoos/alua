@@ -10,7 +10,6 @@ require("socket")
 require("posix")
 
 -- internal modules
-require("_alua.app")
 require("_alua.event")
 require("_alua.netio")
 require("_alua.utils")

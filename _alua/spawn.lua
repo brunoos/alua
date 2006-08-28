@@ -6,7 +6,6 @@ module("_alua.daemon.spawn")
 
 require("socket")
 require("posix")
-require("_alua.app")
 require("_alua.event")
 require("_alua.netio")
 

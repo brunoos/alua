@@ -5,7 +5,6 @@
 
 module("_alua.daemon.message")
 
-require("_alua.app")
 require("_alua.netio")
 
 -- deliver a message to a process
