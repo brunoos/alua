@@ -221,12 +221,8 @@ end
 
 _alua.daemon.process_command_table = {
 	["link"] = process_link,
-	["join"] = _alua.daemon.app.join,
-	["start"] = _alua.daemon.app.start,
-	["query"] = _alua.daemon.app.query,
 	["spawn"] = _alua.daemon.spawn.from_process,
 	["message"] = _alua.daemon.message.from_process,
-	["leave"] = _alua.daemon.app.leave,
 }
 
 _alua.daemon.command_table = {
