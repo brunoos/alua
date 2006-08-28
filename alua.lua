@@ -58,11 +58,6 @@ function alua.spawn(name, processes, callback)
 	alua.command("spawn", { name = name, processes = processes }, callback)
 end
 
--- query the daemon about a given application
-function alua.query(name, callback)
-	alua.command("query", { name = name }, callback)
-end
-
 -- connect to a daemon. operates synchronously
 function alua.connect(daemon)
 	if alua.socket then return nil, "already connected" end
