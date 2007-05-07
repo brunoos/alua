@@ -60,6 +60,9 @@ function _alua.daemon.get(hash, callback)
       return s
    end
    local s, e = socket.connect(_alua.daemon.unhash(hash))
+   if not s then
+      return nil, e
+   end
    local _context = { command_table = _alua.daemon.command_table }
    local _callback = { read = _alua.netio.handler }
    _alua.event.add(s, _callback, _context)
@@ -70,8 +73,6 @@ function _alua.daemon.get(hash, callback)
                 end
       _alua.netio.async(s, "auth", { mode = "daemon",
                            id = _alua.daemon.self.hash }, f)
-   elseif not s then
-      return nil, e
    else
       _alua.netio.sync(s, "auth", { mode = "daemon",
                           id = _alua.daemon.self.hash })
@@ -174,31 +175,13 @@ local function proto_auth(sock, context, argument, reply)
   -- If we don't have a connection to ourselves, it's a good time to get one.
   if self_connection_state == "connected" then
      reply({ id = context.id, daemon = _alua.daemon.self.hash })
-  elseif self_connection_state == "trying" then
+  else
      -- We are trying to connect with ourselves?
      if context.id == _alua.daemon.self.hash then
         reply({ id = context.id, daemon = _alua.daemon.self.hash })
      else
         table.insert(pending_replies, {reply = reply, id = context.id})
      end
-  else
-     self_connection_state = "trying"
-     table.insert(pending_replies, { reply = reply, id = context.id })
-     local f = function (s)
-                  self_connection_state = "connected"
-                  -- internal state
-                  alua.socket = s
-                  alua.id = _alua.daemon.self.hash
-                  alua.daemon = _alua.daemon.self.hash
-                  _alua.daemon.processes[alua.id] = s
-                  -- reply the pending requests
-                  for k, v in ipairs(pending_replies) do
-                     v.reply({ id = v.id, daemon = _alua.daemon.self.hash })
-                  end
-                  -- clean up
-                  pending_replies = nil
-               end
-     _alua.daemon.get(_alua.daemon.self.hash, f)
   end
 end
 
@@ -238,6 +221,23 @@ function _alua.daemon.create(user_conf)
    _alua.daemon.self.socket = sock
    callback = { read = _alua.daemon.incoming_connection }
    _alua.event.add(_alua.daemon.self.socket, callback)
+
+   f = function (s)
+          self_connection_state = "connected"
+          -- internal state
+          alua.socket = s
+          alua.id = _alua.daemon.self.hash
+          alua.daemon = _alua.daemon.self.hash
+          _alua.daemon.processes[alua.id] = s
+          -- reply the pending requests
+          for k, v in ipairs(pending_replies) do
+             v.reply({ id = v.id, daemon = _alua.daemon.self.hash })
+          end
+          -- clean up
+          pending_replies = nil
+       end
+   _alua.daemon.get(_alua.daemon.self.hash, f)
+
    while true do
       _alua.event.loop()
       _alua.timer.poll()
