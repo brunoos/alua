@@ -322,7 +322,6 @@ function _alua.daemon.create(user_conf)
           alua.socket = s
           alua.id = _alua.daemon.self.hash
           alua.daemon = _alua.daemon.self.hash
-          _alua.daemon.processes[alua.id] = s
           -- reply the pending requests
           for k, v in ipairs(pending_replies) do
              v.reply({ id = v.id, daemon = _alua.daemon.self.hash })

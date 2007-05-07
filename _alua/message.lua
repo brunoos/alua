@@ -6,11 +6,12 @@ module("_alua.message", package.seeall)
 
 require("_alua.netio")
 require("_alua.timer")
+require("_alua.daemon")
 
 -- Deliver a message to a process.
 local function msg_deliver(context, header, msg, callback)
    local to = header.to
-   local s = _alua.daemon.processes[to]
+   local s = _alua.daemon.processes[to] or _alua.daemon.daemons[to]
    if s then
       local timer, f
       if header.timeout then
@@ -53,17 +54,22 @@ end
 
 -- Process handler for the 'message' request.
 function _alua.message.from_process(sock, context, header, reply)
-  local done, _reply, to = {}, {}, header.to
-  local count = type(to) == "table" and table.getn(to) or 1
-  local reply_callback = 
-     function (msg)
-       _reply[msg.to] = { status = msg.status, error = msg.error }
-       count = count - 1
-       if count == 0 then
-          reply(_reply)
-       end
-     end
-  message_common(sock, context, header, reply_callback, false)
+   -- See if it's a message for us.
+   if header.to == _alua.daemon.self.hash then
+      alua.incoming_msg(sock, context, header, reply)
+   else
+      local done, _reply, to = {}, {}, header.to
+      local count = type(to) == "table" and table.getn(to) or 1
+      local reply_callback = 
+         function (msg)
+            _reply[msg.to] = { status = msg.status, error = msg.error }
+            count = count - 1
+            if count == 0 then
+               reply(_reply)
+            end
+         end
+      message_common(sock, context, header, reply_callback, false)
+   end
 end
 
 -- Daemon handler for the 'message' request.
@@ -73,8 +79,8 @@ function _alua.message.from_daemon(sock, context, header, reply)
       alua.incoming_msg(sock, context, header, reply)
    else
       local reply_callback = function (__reply)
-                            reply(__reply)
-                          end
+                                reply(__reply)
+                             end
       message_common(sock, context, header, reply_callback, true)
    end
 end
