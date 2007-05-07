@@ -2,22 +2,28 @@
 -- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
 -- all rights reserved. part of the alua project.
 
-module("_alua.daemon.message", package.seeall)
+module("_alua.message", package.seeall)
 
 require("_alua.netio")
+require("_alua.timer")
 
 -- Deliver a message to a process.
 local function msg_deliver(context, header, msg, callback)
   local to = header.to
   local s = _alua.daemon.processes[to]
   if s then
-    local timer = _alua.timer.add(function(t)
-      callback({ to = to, status = "error", error = "timeout" })
-      _alua.timer.del(t)
-    end, header.timeout)
+    local timer 
+    if header.timeout then
+      timer = _alua.timer.add(function(t)
+         callback({ to = to, status = "error", error = "timeout" })
+         _alua.timer.del(t)
+      end, header.timeout)
+    end
     _alua.netio.async(s, "message", header, function(reply)
-      callback(reply)
-      _alua.timer.del(timer)
+       callback(reply)
+       if timer then
+          _alua.timer.del(timer)
+       end
     end)
     s:send(msg)
   else
@@ -43,7 +49,7 @@ local function message_common(sock, context, header, reply, forwarding)
 end
 
 -- Process handler for the 'message' request.
-function _alua.daemon.message.from_process(sock, context, header, reply)
+function _alua.message.from_process(sock, context, header, reply)
   local done, _reply, to = {}, {}, header.to
   local count = type(to) == "table" and table.getn(to) or 1
   local reply_callback = function (msg)
@@ -57,7 +63,7 @@ function _alua.daemon.message.from_process(sock, context, header, reply)
 end
 
 -- Daemon handler for the 'message' request.
-function _alua.daemon.message.from_daemon(sock, context, header, reply)
+function _alua.message.from_daemon(sock, context, header, reply)
   -- See if it's a message for us.
   if header.to == _alua.daemon.self.hash then
     alua.incoming_msg(sock, context, header, reply)

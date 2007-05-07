@@ -2,7 +2,7 @@
 -- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
 -- all rights reserved. part of the alua project.
 
-module("_alua.daemon.spawn", package.seeall)
+module("_alua.spawn", package.seeall)
 
 require("socket")
 require("posix")
@@ -140,7 +140,7 @@ local function spawn_by_name(context, arg, reply)
   spawn_prepare_table(context, arg, reply)
 end
 
-function _alua.daemon.spawn.from_process(s, context, arg, reply)
+function _alua.spawn.from_process(s, context, arg, reply)
   if type(arg.processes) == "number" then
     spawn_prepare_table(context, arg, reply)
   elseif type(arg.processes) == "table" then
@@ -152,7 +152,7 @@ function _alua.daemon.spawn.from_process(s, context, arg, reply)
   end
 end
 
-function _alua.daemon.spawn.from_daemon(sock, context, argument, reply)
+function _alua.spawn.from_daemon(sock, context, argument, reply)
   local processes = {}
   for i = argument.count, 1, - 1 do
     local id, status, e = spawn_local(context, argument.names[i],
