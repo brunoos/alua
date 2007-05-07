@@ -160,11 +160,11 @@ local function proto_auth(sock, context, argument, reply)
 
   -- If we don't have a connection to ourselves, it's a good time to get one.
   if self_connection_state == "connected" then
-     reply({ id = context.id })
+     reply({ id = context.id, daemon = _alua.daemon.self.hash })
   elseif self_connection_state == "trying" then
      -- We are trying to connect with ourselves?
      if context.id == _alua.daemon.self.hash then
-        reply({ id = context.id })
+        reply({ id = context.id, daemon = _alua.daemon.self.hash })
      else
         table.insert(pending_replies, {reply = reply, id = context.id})
      end
@@ -176,10 +176,11 @@ local function proto_auth(sock, context, argument, reply)
                   -- internal state
                   alua.socket = s
                   alua.id = _alua.daemon.self.hash
+                  alua.daemon = _alua.daemon.self.hash
                   _alua.daemon.processes[alua.id] = s
                   -- reply the pending requests
                   for k, v in ipairs(pending_replies) do
-                     v.reply({ id = v.id })
+                     v.reply({ id = v.id, daemon = _alua.daemon.self.hash })
                   end
                   -- clean up
                   pending_replies = nil
@@ -234,11 +235,17 @@ end
 function _alua.daemon.connect_process(daemon, auth_callback)
    local sock, e = socket.connect(_alua.daemon.unhash(daemon))
    if not sock then 
-      return nil, nil, e 
+      return nil, e 
    end
    local reply, e = _alua.netio.sync(sock, "auth", { mode = "process" })
-   if not reply then return nil, nil, e end
-   return sock, reply.arguments.id
+   if not reply then 
+      return nil, e 
+   end
+   return {
+     socket = sock, 
+     id = reply.arguments.id,
+     daemon = reply.arguments.daemon,
+   }
 end
 
 -- Get information about an incoming/leaving process.

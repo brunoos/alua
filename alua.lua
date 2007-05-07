@@ -80,18 +80,18 @@ function alua.connect(daemon)
    if alua.socket then 
       return nil, "already connected" 
    end
-   local socket, id, e = _alua.daemon.connect_process(daemon)
-   if not socket then 
+   local conn, e = _alua.daemon.connect_process(daemon)
+   if not conn then 
       return nil, e 
    end
-   alua.socket = socket
-   alua.daemon = daemon
-   alua.id = id
+   alua.id = conn.id
+   alua.socket = conn.socket
+   alua.daemon = conn.daemon
    local commands = { ["message"] = alua.incoming_msg }
    local callback = { read = _alua.netio.handler }
    _alua.utils.protect(commands, _alua.utils.invalid_command)
-   _alua.event.add(socket, callback, { command_table = commands })
-   return daemon
+   _alua.event.add(alua.socket, callback, { command_table = commands })
+   return alua.daemon
 end
 
 -- open a connection with, or create a new a daemon
