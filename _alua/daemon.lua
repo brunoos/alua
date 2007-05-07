@@ -117,115 +117,82 @@ local function process_link(s, context, arg, reply)
    local daemons = {}
    local myself = false
 
-   -- Unique daemons identification
+   -- Remove the repeated identifications
    for k, v in ipairs(arg.daemons) do
-      if not tmp[v] then
-         tmp[v] = true
-         daemons[v] = false
-         if v == alua.id then
-            table.insert(daemons, 1, v)
-            myself = true
-         else
+      if alua.id ~= v then
+         if not tmp[v] then
+            tmp[v] = true
             table.insert(daemons, v)
          end
-      end
-   end
-
-   -- check if the current daemon was in the list
-   if not myself then
-      daemons[alua.id] = false
-      table.insert(daemons, 1, alua.id)
-   end
-
-   -- Try to connect with the daemons
-   tmp = false
-   for k, v in ipairs(daemons) do
-      if v ~= alua.id then
-         local s = _alua.daemon.get(v)
-         if not s then
-            tmp = true
-            break
-         else
-            daemons[v] = true
-         end
       else
-         daemons[v] = true
+         -- The current daemon is in the list
+         myself = true
       end
    end
 
-   -- At least one connection fail -> link fail
-   if tmp then
-      tmp = {}
-      for k, v in ipairs(daemons) do
-         tmp[v] = (daemons[v] and "ok") or "fail"
-      end
-      if not myself then
-         tmp[alua.id] = nil
-      end
-      local arg = {status = "error", error = "link failure", daemons = tmp}
-      reply(arg)
-      return
-   end
+   -- Insert the current daemon into the list in the first position
+   table.insert(daemons, 1, alua.id)
 
    -- Link was done, request the next daemon to make the links
-   local arg = { daemons = daemons, next = 2 }
+   local arg = { daemons = daemons, next = 1 }
+
+   -- The current daemon is not in the original list, 
+   -- do not reply it
    if not myself then
       arg.exclude = alua.id
    end
+
    local cb = function(arg)
                  reply(arg)
               end
-   local s = _alua.daemon.get(daemons[2])
+   local s = _alua.daemon.get(alua.id)
    _alua.netio.async(s, "link", arg, cb)
 end
 
 -- Extend our network of daemons, request coming from a daemon.
 local function daemon_link(s, context, arg, reply)
    -- Set all connections as fail before connect the daemons
-   local daemons = arg.daemons
-   for k, v in ipairs(daemons) do
-      daemons[v] = false
+   local daemons = {}
+
+   for k, v in ipairs(arg.daemons) do
+      daemons[v] = "unknown"
    end
 
    -- Try to connect the daemons
-   local tmp = false
-   for k, v in ipairs(daemons) do
+   local fail = false
+   for k, v in ipairs(arg.daemons) do
       if alua.id ~= v then
          local s = _alua.daemon.get(v)
          if not s then
-            tmp = true
+            fail = true
+            daemons[v] = "fail"
+            break
          else
-            daemons[v] = true
+            daemons[v] = "ok"
          end
       else
-         daemons[v] = true
+         daemons[v] = "ok"
       end
    end
 
    -- At least a connection fail -> return error
-   if tmp then
-      tmp = {}
-      for k, v in ipairs(daemons) do
-         tmp[v] = (daemons[v] or "ok") and "fail"
-      end
+   if fail then
       if arg.exclude then
-         tmp[arg.exclude] = nil
+         daemons[arg.exclude] = nil
       end
-      reply({ status = "error", error = "link failure", daemons = tmp})
+      local tmp = { status = "error", daemons = daemons}
+      tmp.error = alua.id .. ": link failure"
+      reply(tmp)
       return
    end
 
    -- If we are the last daemon, reply successfully
    arg.next = arg.next + 1
-   if arg.next > table.getn(daemons) then
-      tmp = {}
-      for k, v in ipairs(daemons) do
-         tmp[v] = "ok"
-      end
+   if arg.next > table.getn(arg.daemons) then
       if arg.exclude then
-         tmp[arg.exclude] = nil
+         daemons[arg.exclude] = nil
       end
-      reply({ status = "ok", daemons = tmp })
+      reply({ status = "ok", daemons = daemons })
       return
    end
 
@@ -234,7 +201,7 @@ local function daemon_link(s, context, arg, reply)
    local cb = function(arg)
                  reply(arg)
               end
-   local s = _alua.daemon.get(daemons[arg.next])
+   local s = _alua.daemon.get(arg.daemons[arg.next])
    _alua.netio.async(s, "link", arg, cb)
 end
 
