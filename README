@@ -1,4 +1,4 @@
-Welcome to the 4.0 release of ALua.
+Welcome to the 4.1 release of ALua.
 
 In this new version, ALua has been completely rewritten in Lua. There's no more
 code to be compiled. Just install the .lua files in src/ somewhere, adjust the
@@ -13,6 +13,7 @@ Or, if you want to get in touch via e-mail, please use the address:
 
 This release of ALua was brought to you by (list in alphabetic order):
 
+Bruno Silvestre
 Noemi Rodriguez
 Pedro Martelletto
 Silvana Rossetto

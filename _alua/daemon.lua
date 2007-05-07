@@ -82,19 +82,32 @@ function _alua.daemon.get(hash, callback)
    return s
 end
 
--- hash an (address, port, id) set
+-- hash an (address, port) set
 function _alua.daemon.hash(addr, port)
    -- workaround
    if addr == "0.0.0.0" then 
       addr = "127.0.0.1" 
+      -- Try to query DNS about an IP different from 127.0.0.1
+      local name = socket.dns.gethostname()
+      if name then
+         local ip, info = socket.dns.toip(name)
+         if ip then
+            for k, v in pairs(info.ip) do
+               if v ~= "127.0.0.1" then
+                  addr = v
+                  break
+               end
+            end
+         end
+      end
    end
    return string.format("%s:%u", addr, port)
 end
 
--- unhash a (address, port, id) set
+-- unhash a (address, port) set
 function _alua.daemon.unhash(hash)
-   local _, i_, addr, port, id = string.find(hash, "(%d.+):(%d+)")
-   return addr, tonumber(port), id
+   local _, _, addr, port = string.find(hash, "(%d.+):(%d+)")
+   return addr, tonumber(port)
 end
 
 -- Extend our network of daemons.
