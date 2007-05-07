@@ -53,9 +53,9 @@ function alua.send(to, msg, callback, timeout)
 	alua.socket:send(msg)
 end
 
--- spawn new processes
+-- Spawn new processes.
 function alua.spawn(processes, callback)
-	alua.command("spawn", { processes = processes }, callback)
+  alua.command("spawn", { processes = processes }, callback)
 end
 
 -- connect to a daemon. operates synchronously

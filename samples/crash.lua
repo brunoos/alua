@@ -11,7 +11,7 @@ spawn_callback(reply)
 
 	i = 1
 	while i <= ncmd do
-		for proc in reply.processes do
+		for proc in pairs(reply.processes) do
 			alua.send(proc, string.format("print(%d)", i) .. cmd)
 		end
 		i = i + 1
@@ -22,6 +22,5 @@ spawn_callback(reply)
 end
 
 alua.open()
-alua.start("crash")
-alua.spawn("crash", 10, spawn_callback)
+alua.spawn(10, spawn_callback)
 alua.loop()

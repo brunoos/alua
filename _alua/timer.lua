@@ -2,7 +2,7 @@
 -- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
 -- all rights reserved. part of the alua project.
 
-module("_alua.timer")
+module("_alua.timer", package.seeall)
 
 -- Count and table of active timers.
 _alua.timer.active_count, _alua.timer.active_table = 0, {}

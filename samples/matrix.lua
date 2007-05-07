@@ -26,7 +26,7 @@ end
 -- Gets column 'i' of matrix 'm'.
 function getcol(m, i)
 	local col = {}
-	for _, v in m do table.insert(col, v[i]) end
+	for _, v in pairs(m) do table.insert(col, v[i]) end
 	return col
 end
 
@@ -45,7 +45,7 @@ local lincom_buf = [[
 -- Returns the linear combination of a (row, column) tuple.
 function lincom(r, c)
 	local ret = 0
-	for i, v in r do ret = ret + v*c[i] end
+	for i, v in pairs(r) do ret = ret + v*c[i] end
 	return ret
 end ]]
 
@@ -53,7 +53,7 @@ end ]]
 function mdump(m)
 	for i = 1, cntrow(m) do
 		local row = getrow(m, i)
-		for _, v in row do io.write(v .. ", ") end
+		for _, v in pairs(row) do io.write(v .. ", ") end
 		io.write("\n")
 	end
 end
@@ -71,8 +71,8 @@ function dorow(idx, p)
 		alua.send(p, "table.insert(ret, lc)")
 	end
 	-- Send us back the result.
-	alua.send(p, [[ alua.send(alua.master, string.format("strrow(%s)",
-	    alua.tostring(ret))) ]] )
+	alua.send(p, [[ alua.send(alua.parent,
+	    string.format("strrow(%s)", alua.tostring(ret))) ]] )
 end
 
 -- Stores a row in the resulting matrix.
@@ -97,7 +97,7 @@ end
 function spawn_callback(reply)
 	procs = {}
 	-- Define lincom() in all processes.
-	for id in reply.processes do
+	for id in pairs(reply.processes) do
 		alua.send(id, lincom_buf)
 		table.insert(procs, id)
 	end
@@ -109,21 +109,15 @@ end
 function link_callback(reply)
 	-- We spawn cntrow(m1) processes, and use them to
 	-- calculate each row of the resulting matrix.
-	alua.spawn(app, cntrow(m1), spawn_callback)
+	alua.spawn(cntrow(m1), spawn_callback)
 end
 
--- Callback for the start command.
-function start_callback(reply)
-	-- Link both daemons we are going to use.
-	alua.link(app, daemons, link_callback)
-end
-
-app = "matrix"
 daemons = { "127.0.0.1:1234", "127.0.0.1:4321" }
 -- The preamble of every ALua application.
 alua = require("alua")
 alua.create({ port = 1234 })
 alua.create({ port = 4321 })
 alua.open({ port = 6080 })
-alua.start(app, start_callback)
+-- Link both daemons we are going to use.
+alua.link(daemons, link_callback)
 alua.loop()

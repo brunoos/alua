@@ -8,7 +8,7 @@
 -- information regarding ALua's licence can be found in the LICENCE file.
 
 -- Miscellanea. Stuff that really doesn't belong anywhere else.
-module("_alua.utils")
+module("_alua.utils", package.seeall)
 
 -- Auxiliary function used to dump a Lua object.
 function _alua.utils.dump(obj)

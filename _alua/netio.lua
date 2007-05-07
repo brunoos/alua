@@ -2,7 +2,7 @@
 -- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
 -- all rights reserved. part of the alua project.
 
-module("_alua.netio")
+module("_alua.netio", package.seeall)
 
 require("_alua.event")
 require("_alua.utils")
