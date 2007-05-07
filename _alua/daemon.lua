@@ -112,36 +112,130 @@ function _alua.daemon.unhash(hash)
 end
 
 -- Extend our network of daemons.
-local function process_link(s, context, arg, reply, nof)
-   local t = { daemons = {}, status = "ok" }
-   for _, hash in pairs(arg.daemons or {}) do
-      local s, id, e = _alua.daemon.get(hash)
-      if not s then
-         t.daemons[hash] = e
-      else
-         t.daemons[hash] = "ok"
-         if not nof then
-            -- Forward link request.
-            if _alua.daemon.self.hash ~= hash then
-               _alua.netio.async(s, "link", arg)
-            end
+local function process_link(s, context, arg, reply)
+   local tmp = {}
+   local daemons = {}
+   local myself = false
+
+   -- Unique daemons identification
+   for k, v in ipairs(arg.daemons) do
+      if not tmp[v] then
+         tmp[v] = true
+         daemons[v] = false
+         if v == alua.id then
+            table.insert(daemons, 1, v)
+            myself = true
+         else
+            table.insert(daemons, v)
          end
       end
    end
-   for d in pairs(_alua.daemon.daemons) do
-      if not t.daemons[d] then
-         t.daemons[d] = "ok"
+
+   -- check if the current daemon was in the list
+   if not myself then
+      daemons[alua.id] = false
+      table.insert(daemons, 1, alua.id)
+   end
+
+   -- Try to connect with the daemons
+   tmp = false
+   for k, v in ipairs(daemons) do
+      if v ~= alua.id then
+         local s = _alua.daemon.get(v)
+         if not s then
+            tmp = true
+            break
+         else
+            daemons[v] = true
+         end
+      else
+         daemons[v] = true
       end
    end
-   reply(t)
+
+   -- At least one connection fail -> link fail
+   if tmp then
+      tmp = {}
+      for k, v in ipairs(daemons) do
+         tmp[v] = (daemons[v] and "ok") or "fail"
+      end
+      if not myself then
+         tmp[alua.id] = nil
+      end
+      local arg = {status = "error", error = "link failure", daemons = tmp}
+      reply(arg)
+      return
+   end
+
+   -- Link was done, request the next daemon to make the links
+   local arg = { daemons = daemons, next = 2 }
+   if not myself then
+      arg.exclude = alua.id
+   end
+   local cb = function(arg)
+                 reply(arg)
+              end
+   local s = _alua.daemon.get(daemons[2])
+   _alua.netio.async(s, "link", arg, cb)
 end
 
 -- Extend our network of daemons, request coming from a daemon.
 local function daemon_link(s, context, arg, reply)
-   local callback = function (s)
-                       process_link(s, context, arg, reply, true)
-                    end
-   _alua.daemon.get(_alua.daemon.self.hash, callback)
+   -- Set all connections as fail before connect the daemons
+   local daemons = arg.daemons
+   for k, v in ipairs(daemons) do
+      daemons[v] = false
+   end
+
+   -- Try to connect the daemons
+   local tmp = false
+   for k, v in ipairs(daemons) do
+      if alua.id ~= v then
+         local s = _alua.daemon.get(v)
+         if not s then
+            tmp = true
+         else
+            daemons[v] = true
+         end
+      else
+         daemons[v] = true
+      end
+   end
+
+   -- At least a connection fail -> return error
+   if tmp then
+      tmp = {}
+      for k, v in ipairs(daemons) do
+         tmp[v] = (daemons[v] or "ok") and "fail"
+      end
+      if arg.exclude then
+         tmp[arg.exclude] = nil
+      end
+      reply({ status = "error", error = "link failure", daemons = tmp})
+      return
+   end
+
+   -- If we are the last daemon, reply successfully
+   arg.next = arg.next + 1
+   if arg.next > table.getn(daemons) then
+      tmp = {}
+      for k, v in ipairs(daemons) do
+         tmp[v] = "ok"
+      end
+      if arg.exclude then
+         tmp[arg.exclude] = nil
+      end
+      reply({ status = "ok", daemons = tmp })
+      return
+   end
+
+   -- We are not the last daemon, request the next daemon to 
+   -- make the links
+   local cb = function(arg)
+                 reply(arg)
+              end
+   local s = _alua.daemon.get(daemons[arg.next])
+   _alua.netio.async(s, "link", arg, cb)
 end
 
 -- Send our process list to another daemon.
