@@ -29,7 +29,6 @@ local function spawn_distribute(context, reply, spawn_table, entries)
    -- send all the spawn requests
    for daemon, args in pairs(spawn_table) do
       local sock = _alua.daemon.daemons[daemon]
-      args.parent = context.id
       _alua.netio.async(sock, "spawn", args, callback)
    end
 end
@@ -115,11 +114,10 @@ end
 --
 
 -- loop for the spawned process
-local function spawn_loop(context, id, s, parent)
+local function spawn_loop(context, id, s)
    -- get rid of past events states
    _alua.event.flush()
    local alua = require("alua")
-   alua.parent = parent or context.id
    alua.socket = s
    alua.id = id
    local commands = { ["message"] = alua.incoming_msg }
@@ -130,7 +128,7 @@ local function spawn_loop(context, id, s, parent)
 end
 
 -- spawns a local process
-local function spawn(context, id, parent)
+local function spawn(context, id)
    -- simulate what socketpair() would do
    local s1 = socket.bind("127.0.0.1", 0)
    local s2 = socket.connect(s1:getsockname())
@@ -151,7 +149,7 @@ local function spawn(context, id, parent)
    end
    if f > 0 then
       s3:close()
-      spawn_loop(context, id, s2, parent)
+      spawn_loop(context, id, s2)
    else
       s2:close()
       local _context = { 
@@ -165,14 +163,14 @@ local function spawn(context, id, parent)
    return "error", "what are you doing here?"
 end
 
-local function spawn_local(context, name, parent)
+local function spawn_local(context, name)
    if not name then
       name = _alua.daemon.get_new_process_id()
    end
    if _alua.daemon.processes[name] then
       return name, "error", "name already in use"
    end
-   local status, e = spawn(context, name, parent)
+   local status, e = spawn(context, name)
    -- notify daemons of new process
    if status == "ok" then
       -- don't notify ourselves
@@ -188,8 +186,7 @@ end
 function _alua.spawn.from_daemon(sock, context, argument, reply)
    local processes = {}
    for i = argument.count, 1, - 1 do
-      local id, status, e = spawn_local(context, argument.names[i],
-         argument.parent)
+      local id, status, e = spawn_local(context, argument.names[i])
       processes[id] = { 
          daemon = _alua.daemon.self.hash, 
          status = status,

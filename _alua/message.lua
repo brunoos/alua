@@ -54,20 +54,20 @@ end
 
 -- Process handler for the 'message' request.
 function _alua.message.from_process(sock, context, header, reply)
+   local _reply = {}
+   local count = type(header.to) == "table" and table.getn(header.to) or 1
+   local reply_callback = 
+      function (msg)
+         _reply[msg.to] = { status = msg.status, error = msg.error }
+         count = count - 1
+         if count == 0 then
+            reply(_reply)
+         end
+      end
    -- See if it's a message for us.
    if header.to == _alua.daemon.self.hash then
-      alua.incoming_msg(sock, context, header, reply)
+      alua.incoming_msg(sock, context, header, reply_callback)
    else
-      local done, _reply, to = {}, {}, header.to
-      local count = type(to) == "table" and table.getn(to) or 1
-      local reply_callback = 
-         function (msg)
-            _reply[msg.to] = { status = msg.status, error = msg.error }
-            count = count - 1
-            if count == 0 then
-               reply(_reply)
-            end
-         end
       message_common(sock, context, header, reply_callback, false)
    end
 end
@@ -78,9 +78,6 @@ function _alua.message.from_daemon(sock, context, header, reply)
    if header.to == _alua.daemon.self.hash then
       alua.incoming_msg(sock, context, header, reply)
    else
-      local reply_callback = function (__reply)
-                                reply(__reply)
-                             end
-      message_common(sock, context, header, reply_callback, true)
+      message_common(sock, context, header, reply, true)
    end
 end
