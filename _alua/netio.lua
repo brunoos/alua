@@ -52,9 +52,6 @@ function reply(sock, context, incoming)
    local callback = context.reqtable[id]
    -- Remove from sequence table
    context.reqtable[id] = nil
-   if id == context.reqcount - 1 then
-      context.reqcount = id - 1
-   end
    if callback then
       callback(arguments)
    end
@@ -75,14 +72,12 @@ end
 -- Issue a protocol command, asynchronously
 function async(sock, cmd, arg, callback)
    local _, context = _alua.event.get(sock)
-   -- Arrange sequence record
-   context.reqcount = context.reqcount or 0
    -- Arrange sequence table
    context.reqtable = context.reqtable or {}
    -- Tag the request
-   local req = { name = cmd, id = context.reqcount }
-   context.reqtable[context.reqcount] = callback
-   context.reqcount = context.reqcount + 1
+   local id = #context.reqtable + 1
+   local req = { name = cmd, id = id }
+   context.reqtable[id] = callback
    send(sock, "request", req, arg)
 end
 
