@@ -37,16 +37,14 @@ end
 -- Receive a message from a process and forward it.
 local function message_common(sock, context, header, reply, forwarding)
    local msg, e = sock:receive(header.len)
-   if not header.from then
-      header.from = context.id
-   end
-   if type(header.to) == "table" and not forwarding then
+   if not forwarding and type(header.to) == "table" then
       -- fake new header
-      for _, dest in pairs(header.to) do 
-        local newheader = header
-        newheader.to = dest
-        msg_deliver(context, newheader, msg, reply)
+      local to = header.to
+      for _, dest in pairs(to) do 
+        header.to = dest
+        msg_deliver(context, header, msg, reply)
       end
+      header.to = to
    else
       msg_deliver(context, header, msg, reply)
    end
