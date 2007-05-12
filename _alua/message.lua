@@ -13,41 +13,52 @@ require("_alua.daemon")
 
 -- Deliver a message to a process.
 local function msg_deliver(context, header, msg, callback)
+   -- Save the timout value and do not forward it
+   local timeout = header.timeout
+   header.timeout = nil
    local to = header.to
    local s = _alua.daemon.processes[to] or _alua.daemon.daemons[to]
    if s then
-      local timer, f
-      if header.timeout then
-        f = function(t)
-              callback({ to = to, status = "error", error = "timeout" })
-              _alua.timer.del(t)
-            end
-         timer = _alua.timer.add(f, header.timeout)
+      local f = callback
+      -- XXX LuaTimer may not be available and timer functions 
+      -- may not work as expected (see _alua.timer module)
+      if timeout then
+         local timer
+         local fired = false
+         local cb = function(t)
+                callback({ to = to, status = "error", error = "timeout" })
+                _alua.timer.del(timer)
+                fired = true
+             end
+         timer = _alua.timer.add(cb, timeout)
+         f = function(reply)
+                if not fired then
+                   _alua.timer.del(timer)
+                   callback(reply)
+                end
+             end
       end
-      f = function(reply)
-            callback(reply)
-            if timer then
-              _alua.timer.del(timer)
-            end
-         end
       _alua.netio.async(s, "message", header, f)
       s:send(msg)
    else
       callback({ to = to, status = "error", error = "process not found" })
    end
+   -- Restore the timout value
+   header.timeout = timeout
 end
 
 -- Receive a message from a process and forward it.
 local function message_common(sock, context, header, reply, forwarding)
    local msg, e = sock:receive(header.len)
    if not forwarding and type(header.to) == "table" then
-      -- Fake new header
+      -- Save the target address
       local to = header.to
       for _, dest in pairs(to) do 
         header.to = dest
         msg_deliver(context, header, msg, reply)
-      end
-      header.to = to
+     end
+     -- Restore the target address
+     header.to = to
    else
       msg_deliver(context, header, msg, reply)
    end
