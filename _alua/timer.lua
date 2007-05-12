@@ -8,7 +8,7 @@
 module("_alua.timer", package.seeall)
 
 -- Test (and load) if LuaTimer is available
-local succ --= pcall(require, "luatimer")
+local succ = pcall(require, "luatimer")
 
 ----
 -- LuaTimer is not available, define fake functions
