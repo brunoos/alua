@@ -1,8 +1,12 @@
 -- $Id$
--- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
--- all rights reserved. part of the alua project.
+--
+-- All rights reserved. Part of the ALua project.
+-- Detailed information regarding ALua's licence can be found 
+-- in the LICENCE file.
+--
 
 alua = {}
+package.loaded["alua"] = alua
 
 require("_alua.event")
 require("_alua.netio")
@@ -65,8 +69,12 @@ end
 
 -- send a message to a (set of) process(es)
 function alua.send(to, msg, callback, timeout)
-   alua.command("message", { to = to, len = string.len(msg),
-                   timeout = timeout }, callback)
+   local arg = {
+      to = to,
+      timeout = timeout,
+      len = string.len(msg),
+   }
+   alua.command("message", arg, callback)
    alua.socket:send(msg)
 end
 

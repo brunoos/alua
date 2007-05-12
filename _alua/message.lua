@@ -1,6 +1,9 @@
 -- $Id$
--- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
--- all rights reserved. part of the alua project.
+--
+-- All rights reserved. Part of the ALua project.
+-- Detailed information regarding ALua's licence can be found 
+-- in the LICENCE file.
+--
 
 module("_alua.message", package.seeall)
 
@@ -38,7 +41,7 @@ end
 local function message_common(sock, context, header, reply, forwarding)
    local msg, e = sock:receive(header.len)
    if not forwarding and type(header.to) == "table" then
-      -- fake new header
+      -- Fake new header
       local to = header.to
       for _, dest in pairs(to) do 
         header.to = dest
@@ -51,9 +54,9 @@ local function message_common(sock, context, header, reply, forwarding)
 end
 
 -- Process handler for the 'message' request.
-function _alua.message.from_process(sock, context, header, reply)
+function from_process(sock, context, header, reply)
    local _reply = {}
-   local count = type(header.to) == "table" and table.getn(header.to) or 1
+   local count = type(header.to) == "table" and #header.to or 1
    local reply_callback = 
       function (msg)
          _reply[msg.to] = { status = msg.status, error = msg.error }
@@ -63,7 +66,7 @@ function _alua.message.from_process(sock, context, header, reply)
          end
       end
    -- See if it's a message for us.
-   if header.to == _alua.daemon.self.hash then
+   if header.to == alua.id then
       alua.incoming_msg(sock, context, header, reply_callback)
    else
       message_common(sock, context, header, reply_callback, false)
@@ -71,9 +74,9 @@ function _alua.message.from_process(sock, context, header, reply)
 end
 
 -- Daemon handler for the 'message' request.
-function _alua.message.from_daemon(sock, context, header, reply)
+function from_daemon(sock, context, header, reply)
    -- See if it's a message for us.
-   if header.to == _alua.daemon.self.hash then
+   if header.to == alua.id then
       alua.incoming_msg(sock, context, header, reply)
    else
       message_common(sock, context, header, reply, true)

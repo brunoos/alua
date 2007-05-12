@@ -1,14 +1,17 @@
 -- $Id$
--- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
--- all rights reserved. part of the alua project.
+--
+-- All rights reserved. Part of the ALua project.
+-- Detailed information regarding ALua's licence can be found 
+-- in the LICENCE file.
+--
 
 module("_alua.channel", package.seeall)
 
 require("socket") 
 require("_alua.event") 
 
--- create a client channel
-function _alua.channel.client(host, port, read, write, close, s)
+-- Create a client channel
+function client(host, port, read, write, close, s)
    -- dirty hack so we can reuse this function. bad, bad pedro...
    if not s then
       s, e = socket.connect(host, port)
@@ -35,16 +38,16 @@ function _alua.channel.client(host, port, read, write, close, s)
    return s
 end
 
--- create a server channel
-function _alua.channel.server(port, read, write, conn, close)
+-- Create a server channel
+function server(port, read, write, conn, close)
    local s, e = socket.bind("*", port)
    if not s then 
       return nil, e 
    end
-   -- prepare special callback
+   -- Prepare special callback
    local callback = function (sock, context) 
                        local s = conn(sock)
-                       -- new 'child' channel, handle it
+                       -- New 'child' channel, handle it
                        if s then 
                           client(nil, nil, read, write, close, s) 
                        end
@@ -53,20 +56,20 @@ function _alua.channel.server(port, read, write, conn, close)
    return s
 end
 
--- close a channel
-function _alua.channel.close(sock)
-   -- just remove the event
+-- Close a channel
+function close(sock)
+   -- Just remove the event
    _alua.event.del(sock) 
 end
  
--- get the pattern being used for a given channel
-function _alua.channel.getpattern(sock)
+-- Get the pattern being used for a given channel
+function getpattern(sock)
    local _, context = _alua.event.get(sock)
    return context.pattern
 end
 
--- set the pattern to be used for a given channel
-function _alua.channel.setpattern(sock, pattern)
+-- Set the pattern to be used for a given channel
+function setpattern(sock, pattern)
    local _, context = _alua.event.get(sock)
    context.pattern = pattern
 end

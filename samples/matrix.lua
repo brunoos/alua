@@ -32,12 +32,12 @@ end
 
 -- Returns the number of rows in matrix 'm'.
 function cntrow(m)
-	return table.getn(m)
+	return #m
 end
 
 -- Returns the number of columns in matrix 'm'.
 function cntcol(m)
-	return table.getn(m[1])
+	return #m[1]
 end
 
 -- The following chunk will be sent to all processes.
@@ -71,7 +71,7 @@ function dorow(idx, p)
 		alua.send(p, "table.insert(ret, lc)")
 	end
 	-- Send us back the result.
-	alua.send(p, [[ alua.send(alua.parent,
+	alua.send(p, [[ alua.send(parent,
 	    string.format("strrow(%s)", alua.tostring(ret))) ]] )
 end
 
@@ -98,6 +98,7 @@ function spawn_callback(reply)
 	procs = {}
 	-- Define lincom() in all processes.
 	for id in pairs(reply.processes) do
+		alua.send(id, "parent = '" .. alua.id .. "'")
 		alua.send(id, lincom_buf)
 		table.insert(procs, id)
 	end
@@ -114,10 +115,10 @@ end
 
 daemons = { "127.0.0.1:1234", "127.0.0.1:4321" }
 -- The preamble of every ALua application.
-alua = require("alua")
-alua.create({ port = 1234 })
-alua.create({ port = 4321 })
-alua.open({ port = 6080 })
+require("alua")
+alua.create({ addr = "127.0.0.1", port = 1234 })
+alua.create({ addr = "127.0.0.1", port = 4321 })
+alua.open({ addr = "127.0.0.1", port = 6080 })
 -- Link both daemons we are going to use.
 alua.link(daemons, link_callback)
 alua.loop()

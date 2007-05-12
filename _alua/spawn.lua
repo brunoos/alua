@@ -1,6 +1,9 @@
 -- $Id$
--- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
--- all rights reserved. part of the alua project.
+--
+-- All rights reserved. Part of the ALua project.
+-- Detailed information regarding ALua's licence can be found 
+-- in the LICENCE file.
+--
 
 module("_alua.spawn", package.seeall)
 
@@ -39,7 +42,7 @@ local function spawn_get_names(names, count)
    end
    local remaining = {}
    local used = {}
-   local n = table.getn(names)
+   local n = #names
    for i = n, count + 1, - 1 do
       table.insert(remaining, names[i])
    end
@@ -81,7 +84,7 @@ local function spawn_by_table(context, arg, reply)
          spawn_table[daemon] = { count = processes, names = {} }
       else
          spawn_table[daemon] = { 
-            count = table.getn(processes),
+            count = #processes,
             names = processes 
          }
       end
@@ -92,11 +95,11 @@ end
 
 local function spawn_by_name(context, arg, reply)
    arg.names = arg.processes
-   arg.processes = table.getn(arg.processes)
+   arg.processes = #arg.processes
    spawn_prepare_table(context, arg, reply)
 end
 
-function _alua.spawn.from_process(s, context, arg, reply)
+function from_process(s, context, arg, reply)
    if type(arg.processes) == "number" then
       spawn_prepare_table(context, arg, reply)
    elseif type(arg.processes) == "table" then
@@ -183,7 +186,7 @@ local function spawn_local(context, name)
    return name, status, e
 end
 
-function _alua.spawn.from_daemon(sock, context, argument, reply)
+function from_daemon(sock, context, argument, reply)
    local processes = {}
    for i = argument.count, 1, - 1 do
       local id, status, e = spawn_local(context, argument.names[i])

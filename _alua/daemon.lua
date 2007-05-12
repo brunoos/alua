@@ -1,6 +1,9 @@
 -- $Id$
--- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
--- all rights reserved. part of the alua project.
+--
+-- All rights reserved. Part of the ALua project.
+-- Detailed information regarding ALua's licence can be found 
+-- in the LICENCE file.
+--
 
 module("_alua.daemon", package.seeall)
 
@@ -16,19 +19,19 @@ require("_alua.spawn")
 require("_alua.message")
 require("_alua.timer")
 
-_alua.daemon.daemons = {}
-_alua.daemon.ndaemons = 0
-_alua.daemon.processes = {}
+daemons = {}
+ndaemons = 0
+processes = {}
 
 -- count of local processes
 local idcount = 0
 -- initialization variables
-local pending_replies = {}
-local self_connection_state = "disconnected"
+local pending = {}
+local self_connection = "disconnected"
 
 -- generate a new process id
-function _alua.daemon.get_new_process_id()
-   local id = string.format("%s:%u", _alua.daemon.self.hash, idcount)
+function get_new_process_id()
+   local id = string.format("%s:%u", self.hash, idcount)
    idcount = idcount + 1
    return id
 end
@@ -37,21 +40,21 @@ end
 local function sync_proclist(s)
   -- Get a list of local processes.
   local lprocs = {}
-  for p in pairs(_alua.daemon.processes) do
+  for p in pairs(processes) do
      table.insert(lprocs, p)
   end
   -- Send it to the remote daemon, and get its list back.
   local reply = _alua.netio.sync(s, "sync", { procs = lprocs })
   for _, p in pairs(reply.arguments.procs) do
-     if not _alua.daemon.processes[p] then
-        _alua.daemon.processes[p] = s
+     if not processes[p] then
+        processes[p] = s
      end
   end
 end
 
 -- Get a connection with a daemon.
-function _alua.daemon.get(hash, callback)
-   local s = _alua.daemon.daemons[hash]
+function get(daemon, callback)
+   local s = daemons[daemon]
    if s then
       -- Already connected.
       if callback then
@@ -59,32 +62,28 @@ function _alua.daemon.get(hash, callback)
       end
       return s
    end
-   local s, e = socket.connect(_alua.daemon.unhash(hash))
+   local s, e = socket.connect(unhash(daemon))
    if not s then
       return nil, e
    end
-   local _context = { command_table = _alua.daemon.command_table }
-   local _callback = { read = _alua.netio.handler }
-   _alua.event.add(s, _callback, _context)
+   local ctx = { command_table = command_table }
+   local cb = { read = _alua.netio.handler }
+   _alua.event.add(s, cb, ctx)
    if callback then
       -- Async.
-      local f = function (reply)
-                   callback(s)
-                end
-      _alua.netio.async(s, "auth", { mode = "daemon",
-                           id = _alua.daemon.self.hash }, f)
+      local f = function (reply) callback(s) end
+      _alua.netio.async(s, "auth", { mode = "daemon", id = self.hash }, f)
    else
-      _alua.netio.sync(s, "auth", { mode = "daemon",
-                          id = _alua.daemon.self.hash })
+      _alua.netio.sync(s, "auth", { mode = "daemon", id = self.hash })
       sync_proclist(s)
    end
-   _alua.daemon.daemons[hash] = s
-   _alua.daemon.ndaemons = _alua.daemon.ndaemons + 1
+   daemons[daemon] = s
+   ndaemons = ndaemons + 1
    return s
 end
 
 -- hash an (address, port) set
-function _alua.daemon.hash(addr, port)
+function hash(addr, port)
    -- workaround
    if addr == "0.0.0.0" then 
       addr = "127.0.0.1" 
@@ -106,8 +105,8 @@ function _alua.daemon.hash(addr, port)
 end
 
 -- unhash a (address, port) set
-function _alua.daemon.unhash(hash)
-   local _, _, addr, port = string.find(hash, "(%d.+):(%d+)")
+function unhash(hash)
+   local addr, port = string.match(hash, "(%d.+):(%d+)")
    return addr, tonumber(port)
 end
 
@@ -145,7 +144,7 @@ local function process_link(s, context, arg, reply)
    local cb = function(arg)
                  reply(arg)
               end
-   local s = _alua.daemon.get(alua.id)
+   local s = get(alua.id)
    _alua.netio.async(s, "link", arg, cb)
 end
 
@@ -162,7 +161,7 @@ local function daemon_link(s, context, arg, reply)
    local fail = false
    for k, v in ipairs(arg.daemons) do
       if alua.id ~= v then
-         local s = _alua.daemon.get(v)
+         local s = get(v)
          if not s then
             fail = true
             daemons[v] = "fail"
@@ -188,7 +187,7 @@ local function daemon_link(s, context, arg, reply)
 
    -- If we are the last daemon, reply successfully
    arg.next = arg.next + 1
-   if arg.next > table.getn(arg.daemons) then
+   if arg.next > #arg.daemons then
       if arg.exclude then
          daemons[arg.exclude] = nil
       end
@@ -201,19 +200,19 @@ local function daemon_link(s, context, arg, reply)
    local cb = function(arg)
                  reply(arg)
               end
-   local s = _alua.daemon.get(arg.daemons[arg.next])
+   local s = get(arg.daemons[arg.next])
    _alua.netio.async(s, "link", arg, cb)
 end
 
 -- Send our process list to another daemon.
 local function daemon_sync(s, context, arg, reply)
    local procs = {}
-   for p in pairs(_alua.daemon.processes) do
+   for p in pairs(processes) do
       table.insert(procs, p)
    end
    for _, p in pairs(arg.procs) do
-      if not _alua.daemon.processes[p] then
-         _alua.daemon.processes[p] = s
+      if not processes[p] then
+         processes[p] = s
       end
    end
    reply({ procs = procs })
@@ -223,31 +222,31 @@ end
 local function proto_auth(sock, context, argument, reply)
    context.mode = argument.mode
    if argument.mode == "process" then
-      context.id = _alua.daemon.get_new_process_id()
-      context.command_table = _alua.daemon.process_command_table
-      _alua.daemon.processes[context.id] = sock
+      context.id = get_new_process_id()
+      context.command_table = process_command_table
+      processes[context.id] = sock
   end
   if argument.mode == "daemon" then
      context.id = argument.id
-     context.command_table = _alua.daemon.command_table
-     _alua.daemon.daemons[context.id] = sock
+     context.command_table = command_table
+     daemons[context.id] = sock
   end
 
   -- If we don't have a connection to ourselves, it's a good time to get one.
-  if self_connection_state == "connected" then
-     reply({ id = context.id, daemon = _alua.daemon.self.hash })
+  if self_connection == "connected" then
+     reply({ id = context.id, daemon = self.hash })
   else
      -- We are trying to connect with ourselves?
-     if context.id == _alua.daemon.self.hash then
-        reply({ id = context.id, daemon = _alua.daemon.self.hash })
+     if context.id == self.hash then
+        reply({ id = context.id, daemon = self.hash })
      else
-        table.insert(pending_replies, {reply = reply, id = context.id})
+        table.insert(pending, {reply = reply, id = context.id})
      end
   end
 end
 
 -- Dequeue an incoming connection, set it to a raw context.
-function _alua.daemon.incoming_connection(sock, context)
+function incoming_connection(sock, context)
    local incoming_sock, e = sock:accept()
    local commands = { ["auth"] = proto_auth }
    local callback = { read = _alua.netio.handler }
@@ -255,19 +254,19 @@ function _alua.daemon.incoming_connection(sock, context)
 end
 
 -- Create a new daemon, as requested by the user.
-function _alua.daemon.create(user_conf)
-   local sock, callback, hash, f, e
-   _alua.daemon.self = { addr = "*", port = 6080 }
+function create(user_conf)
+   local sock, callback, h, f, e
+   self = { addr = "*", port = 6080 }
    if user_conf then
       for i, v in pairs(user_conf) do
-         _alua.daemon.self[i] = v
+         self[i] = v
       end
    end
-   sock, e = socket.bind(_alua.daemon.self.addr, _alua.daemon.self.port)
+   sock, e = socket.bind(self.addr, self.port)
    if not sock then
       return nil, e
    end
-   hash = _alua.daemon.hash(sock:getsockname())
+   h = hash(sock:getsockname())
    f, e = posix.fork()
    -- fork() failed
    if not f then 
@@ -276,27 +275,27 @@ function _alua.daemon.create(user_conf)
    -- parent
    if f > 0 then
       sock:close()
-      return hash
+      return h
    end
-   _alua.daemon.self.hash = hash
-   _alua.daemon.self.socket = sock
-   callback = { read = _alua.daemon.incoming_connection }
-   _alua.event.add(_alua.daemon.self.socket, callback)
+   self.hash = h
+   self.socket = sock
+   callback = { read = incoming_connection }
+   _alua.event.add(self.socket, callback)
 
    f = function (s)
-          self_connection_state = "connected"
+          self_connection = "connected"
           -- internal state
           alua.socket = s
-          alua.id = _alua.daemon.self.hash
-          alua.daemon = _alua.daemon.self.hash
+          alua.id = self.hash
+          alua.daemon = self.hash
           -- reply the pending requests
-          for k, v in ipairs(pending_replies) do
-             v.reply({ id = v.id, daemon = _alua.daemon.self.hash })
+          for k, v in ipairs(pending) do
+             v.reply({ id = v.id, daemon = self.hash })
           end
           -- clean up
-          pending_replies = nil
+          pending = nil
        end
-   _alua.daemon.get(_alua.daemon.self.hash, f)
+   get(self.hash, f)
 
    while true do
       _alua.event.loop()
@@ -305,8 +304,8 @@ function _alua.daemon.create(user_conf)
 end
 
 -- Connect to a daemon, as requested by the user.
-function _alua.daemon.connect_process(daemon, auth_callback)
-   local sock, e = socket.connect(_alua.daemon.unhash(daemon))
+function connect_process(daemon, auth_callback)
+   local sock, e = socket.connect(unhash(daemon))
    if not sock then 
       return nil, e 
    end
@@ -322,25 +321,23 @@ function _alua.daemon.connect_process(daemon, auth_callback)
 end
 
 -- Get information about an incoming/leaving process.
-function _alua.daemon.notify(s, context, arg, reply)
-   _alua.daemon.processes[arg.id] = s
+function notify(s, context, arg, reply)
+   processes[arg.id] = s
 end
 
-_alua.daemon.process_command_table = {
+process_command_table = {
    ["link"] = process_link,
    ["spawn"] = _alua.spawn.from_process,
    ["message"] = _alua.message.from_process,
 }
 
-_alua.daemon.command_table = {
+command_table = {
    ["link"] = daemon_link,
    ["sync"] = daemon_sync,
    ["spawn"] = _alua.spawn.from_daemon,
-   ["notify"] = _alua.daemon.notify,
+   ["notify"] = notify,
    ["message"] = _alua.message.from_daemon,
 }
 
-_alua.utils.protect(_alua.daemon.process_command_table,
-                    _alua.utils.invalid_command)
-_alua.utils.protect(_alua.daemon.command_table,
-                    _alua.utils.invalid_command)
+_alua.utils.protect(process_command_table, _alua.utils.invalid_command)
+_alua.utils.protect(command_table, _alua.utils.invalid_command)

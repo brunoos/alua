@@ -1,14 +1,18 @@
 -- $Id$
--- copyright (c) 2005 pedro martelletto <pedro@ambientworks.net>
--- all rights reserved. part of the alua project.
+--
+-- All rights reserved. Part of the ALua project.
+-- Detailed information regarding ALua's licence can be found 
+-- in the LICENCE file.
+--
 
 module("_alua.timer", package.seeall)
 
 -- Count and table of active timers.
-_alua.timer.active_count, _alua.timer.active_table = 0, {}
+active_count = 0
+active_table = {}
 
 -- Add a new timer.
-function _alua.timer.add(cmd, freq)
+function add(cmd, freq)
    if not cmd or not freq then 
       return nil 
    end
@@ -19,29 +23,29 @@ function _alua.timer.add(cmd, freq)
    if not t then
       return nil, e
    end
-   _alua.timer.active_table[t] = cmd
-   _alua.timer.active_count = _alua.timer.active_count + 1
+   active_table[t] = cmd
+   active_count = active_count + 1
    return t
 end
 
 -- Remove a timer.
-function _alua.timer.del(t)
+function del(t)
    if not luatimer then 
       return 
    end
    luatimer.removeTimer(t)
-   _alua.timer.active_table[t] = nil
-   _alua.timer.active_count = _alua.timer.active_count - 1
+   active_table[t] = nil
+   active_count = active_count - 1
 end
 
 -- Poll for expirations.
-function _alua.timer.poll()
+function poll()
    if not luatimer then 
       return 
    end
    local tt = luatimer.timeoutAll() or {}
    for _, t in pairs(tt) do
-      local f = _alua.timer.active_table[t]
+      local f = active_table[t]
       if f then 
          f(t) 
       end
