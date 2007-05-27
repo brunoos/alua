@@ -59,7 +59,7 @@ function alua.exit(to, code, callback)
       os.exit(code) 
    end
    code = code or "nil"
-   alua.send(to, "alua.exit(nil, nil, " .. code .. ")", callback)
+   alua.send(to, "alua.exit(nil, " .. code .. ")", callback)
 end
 
 -- link daemons to daemons
