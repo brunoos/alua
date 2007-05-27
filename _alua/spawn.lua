@@ -134,7 +134,9 @@ end
 local function spawn(context, id)
    -- simulate what socketpair() would do
    local s1 = socket.bind("127.0.0.1", 0)
+   s1:setoption('tcp-nodelay', true)
    local s2 = socket.connect(s1:getsockname())
+   s2:setoption('tcp-nodelay', true)
    local s3, err = s1:accept()
    if not s3 then
       s1:close()
@@ -142,6 +144,7 @@ local function spawn(context, id)
       return "error", "spawn failed"
    end
    s1:close()
+   s3:setoption('tcp-nodelay', true)
 
    local f = posix.fork()
    -- fork() failed

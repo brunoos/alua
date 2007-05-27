@@ -66,6 +66,7 @@ function get(daemon, callback)
    if not s then
       return nil, e
    end
+   s:setoption('tcp-nodelay', true)
    local ctx = { command_table = command_table }
    local cb = { read = _alua.netio.handler }
    _alua.event.add(s, cb, ctx)
@@ -248,6 +249,7 @@ end
 -- Dequeue an incoming connection, set it to a raw context.
 function incoming_connection(sock, context)
    local incoming_sock, e = sock:accept()
+   incoming_sock:setoption('tcp-nodelay', true)
    local commands = { ["auth"] = proto_auth }
    local callback = { read = _alua.netio.handler }
    _alua.event.add(incoming_sock, callback, { command_table = commands })
@@ -266,6 +268,7 @@ function create(user_conf)
    if not sock then
       return nil, e
    end
+   sock:setoption('tcp-nodelay', true)
    h = hash(sock:getsockname())
    f, e = posix.fork()
    -- fork() failed
@@ -309,6 +312,7 @@ function connect_process(daemon, auth_callback)
    if not sock then 
       return nil, e 
    end
+   sock:setoption('tcp-nodelay', true)
    local reply, e = _alua.netio.sync(sock, "auth", { mode = "process" })
    if not reply then 
       return nil, e 

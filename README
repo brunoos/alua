@@ -1,17 +1,15 @@
-Welcome to the 4.1 release of ALua.
+Welcome to the 5.0-Alpha release of ALua.
 
-In  this   new  version,  ALua   has  been  completely   rewritten  in
-Lua. There's no more code to  be compiled. Just install the .lua files
-in src/ somewhere, adjust the  paths, and you should be done. However,
-apart from LuaSocket, there  is now another dependency: LuaPosix. Both
-libraries have  proven to be extremely portable,  and should represent
-no harm in most environments.
+To install,  just the  alua.lua file and  the directory _alua  to your
+LUA_PATH.   However, apart  from  LuaSocket, there  are  now more  two
+dependencies: LuaPosix and LuaTimer.   All libraries have proven to be
+extremely portable, and should represent no harm in most environments.
 
 For more information as well as documentation, please refer to:
    http://alua.inf.puc-rio.br/  
 
 Or, if you want to get in touch via e-mail, please use the address:
-  alua@inf.puc-rio.br
+   alua@inf.puc-rio.br
 
 This release of ALua was brought to you by (list in alphabetic order):
 

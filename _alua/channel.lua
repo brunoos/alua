@@ -18,6 +18,7 @@ function client(host, port, read, write, close, s)
       if not s then 
          return nil, e 
       end
+      s:setoption('tcp-nodelay', true)
    end
    local read_callback, write_callback
    read_callback = function (sock, context)
@@ -44,6 +45,7 @@ function server(port, read, write, conn, close)
    if not s then 
       return nil, e 
    end
+   s:setoption('tcp-nodelay', true)
    -- Prepare special callback
    local callback = function (sock, context) 
                        local s = conn(sock)
