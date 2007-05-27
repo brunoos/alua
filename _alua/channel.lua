@@ -11,51 +11,57 @@ require("socket")
 require("_alua.event") 
 
 -- Create a client channel
-function client(host, port, read, write, close, s)
-   -- dirty hack so we can reuse this function. bad, bad pedro...
-   if not s then
-      s, e = socket.connect(host, port)
-      if not s then 
-         return nil, e 
-      end
-      s:setoption('tcp-nodelay', true)
-   end
+local function handler(sock, read, write, close)
    local read_callback, write_callback
-   read_callback = function (sock, context)
-                      local pattern = context.pattern
-                      local data = sock:receive(pattern)
-                      if not data then 
-                         return _alua.event.del(sock) 
-                      end
-                      read(sock, data)
-                   end
+   if read then
+      read_callback = function (sock, context)
+         local pattern = context.pattern
+         local data = sock:receive(pattern)
+         if not data then 
+            return _alua.event.del(sock) 
+         end
+         read(sock, data)
+      end
+   end
    if write then
       write_callback = function (sock, context) 
-                          write(sock) 
-                       end
+         write(sock) 
+      end
    end
-   _alua.event.add(s, { read = read_callback, write = write_callback },
+   _alua.event.add(sock, { read = read_callback, write = write_callback },
                    { terminator = close })
+end
+
+
+-- Create a client channel
+function client(host, port, read, write, close)
+   s, e = socket.connect(host, port)
+   if not s then 
+      return nil, e 
+   end
+   s:setoption('tcp-nodelay', true)
+   handler(s, read, write, close)
    return s
 end
 
 -- Create a server channel
 function server(port, read, write, conn, close)
-   local s, e = socket.bind("*", port)
-   if not s then 
+   local svr, e = socket.bind("*", port)
+   if not svr then 
       return nil, e 
    end
-   s:setoption('tcp-nodelay', true)
+   svr:setoption('tcp-nodelay', true)
    -- Prepare special callback
    local callback = function (sock, context) 
-                       local s = conn(sock)
+                       local s = sock:accept()
+                       conn(s)
                        -- New 'child' channel, handle it
                        if s then 
-                          client(nil, nil, read, write, close, s) 
+                          handler(s, read, write, close)
                        end
                     end
-   _alua.event.add(s, { read = callback }, { terminator = close })
-   return s
+   _alua.event.add(svr, { read = callback }, { terminator = close })
+   return svr
 end
 
 -- Close a channel
