@@ -67,7 +67,7 @@ function get(daemon, callback)
       return nil, e
    end
    s:setoption('tcp-nodelay', true)
-   local ctx = { command_table = command_table }
+   local ctx = { command_table = command_table, id = daemon }
    local cb = { read = _alua.netio.handler }
    _alua.event.add(s, cb, ctx)
    if callback then
