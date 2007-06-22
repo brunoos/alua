@@ -11,85 +11,114 @@ require("_alua.netio")
 require("_alua.timer")
 require("_alua.daemon")
 
--- Deliver a message to a process.
-local function msg_deliver(context, header, msg, callback)
+-- Forward a message to a process or daemon.
+local function forward(msg, header, reply)
    -- Save the timout value and do not forward it
    local timeout = header.timeout
    header.timeout = nil
-   local to = header.to
-   local s = _alua.daemon.processes[to] or _alua.daemon.daemons[to]
+   -- Find the socket to the destination
+   local s = _alua.daemon.processes[header.to] or 
+             _alua.daemon.daemons[header.to]
    if s then
-      local f = callback
       -- XXX LuaTimer may not be available and timer functions 
-      -- may not work as expected (see _alua.timer module)
-      if timeout then
+      -- may not work as expected (see module '_alua.timer')
+      local newreply
+      if not timeout then
+         newreply = reply
+      else
          local timer
          local fired = false
          local cb = function(t)
-                callback({ to = to, status = "error", error = "timeout" })
-                _alua.timer.del(timer)
-                fired = true
-             end
+            reply({ to = header.to, status = "error", error = "timeout" })
+            _alua.timer.del(timer)
+            fired = true
+         end
          timer = _alua.timer.add(cb, timeout)
-         f = function(reply)
-                if not fired then
-                   _alua.timer.del(timer)
-                   callback(reply)
-                end
-             end
+         newreply = function(r)
+            if not fired then
+               _alua.timer.del(timer)
+               reply(r)
+            end
+         end
       end
-      _alua.netio.async(s, "message", header, f)
+      _alua.netio.async(s, "message", header, newreply)
       s:send(msg)
    else
-      callback({ to = to, status = "error", error = "process not found" })
+      reply({ to = header.to, status = "error", error = "process not found" })
    end
    -- Restore the timout value
    header.timeout = timeout
 end
 
--- Receive a message from a process and forward it.
-local function message_common(sock, context, header, reply, forwarding)
-   local msg, e = sock:receive(header.len)
-   if not forwarding and type(header.to) == "table" then
-      -- Save the target address
-      local to = header.to
-      for _, dest in pairs(to) do 
-        header.to = dest
-        msg_deliver(context, header, msg, reply)
-     end
-     -- Restore the target address
-     header.to = to
+-- Select the message destination.
+local function unicast(msg, header, reply)
+   -- See if it's a message for us.
+   if header.to == alua.id then
+      alua.execute(msg, reply)
    else
-      msg_deliver(context, header, msg, reply)
+      forward(msg, header, reply)
    end
 end
 
--- Process handler for the 'message' request.
-function from_process(sock, context, header, reply)
-   local _reply = {}
-   local count = type(header.to) == "table" and #header.to or 1
-   local reply_callback = 
-      function (msg)
-         _reply[msg.to] = { status = msg.status, error = msg.error }
-         count = count - 1
-         if count == 0 then
-            reply(_reply)
-         end
+local function multicast(msg, header, reply)
+   local to = {}
+   local count = 0
+
+   -- Take only unique identifiers
+   local tmp = {}
+   for k, v in ipairs(header.to) do
+      if not tmp[v] then
+         tmp[v] = true
+         table.insert(to, v)
+         count = count + 1
       end
-   -- See if it's a message for us.
-   if header.to == alua.id then
-      alua.incoming_msg(sock, context, header, reply_callback)
-   else
-      message_common(sock, context, header, reply_callback, false)
    end
+
+   local answers = {}
+   local newreply = function(m)
+      answers[m.to] = { status = m.status, error = m.error }
+      count = count - 1
+      if count == 0 then
+         reply(answers)
+      end
+   end
+
+   local backup = header.to
+   for k, v in ipairs(to) do
+      header.to = v
+      unicast(msg, header, newreply)
+   end
+   header.to = backup
 end
 
 -- Daemon handler for the 'message' request.
-function from_daemon(sock, context, header, reply)
-   -- See if it's a message for us.
-   if header.to == alua.id then
-      alua.incoming_msg(sock, context, header, reply)
+local function process(sock, header, reply, isprocess)
+   local msg = sock:receive(header.len)
+   if type(header.to) == "table" then
+      multicast(msg, header, reply)
    else
-      message_common(sock, context, header, reply, true)
+      local newreply = reply
+      -- If the request comes from a process, transform the reply
+      if isprocess then
+         local answer = {}
+         newreply = function(m)
+            answer[m.to] = { status = m.status, error = m.error }
+            reply(answer)
+         end
+      else
+         -- Else, keep the original reply
+         newreply = reply
+      end
+      unicast(msg, header, newreply)
    end
+end
+
+function from_process(sock, context, header, reply)
+   process(sock, header, reply, true)
+end
+
+function from_daemon(sock, context, header, reply)
+   -- Since the daemon is a process too, check who is sending the request.
+   local isprocess = ((alua.id == context.id) and true) or false
+   process(sock, header, reply, isprocess)
 end

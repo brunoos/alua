@@ -17,21 +17,31 @@ require("_alua.channel")
 
 -- handler for incoming daemon messages
 function alua.incoming_msg(sock, context, header, reply)
-   local message, e = sock:receive(header.len) -- receive the message
-   if not message then 
+   -- Receive the message from the daemon
+   local msg, e = sock:receive(header.len)
+   if not msg then 
       alua.close()
       return 
+   else
+      alua.execute(msg, reply)
    end
-   local obj = loadstring(message) -- load message into executable object
-   -- if we exit(), reply first
+end
+
+-- Execute a message. This function is shared: both daemon and process use it.
+function alua.execute(msg, reply)
+   -- Load message into executable object
+   local obj = loadstring(msg)
+   -- If we exit(), reply first
    local _exit = os.exit
    os.exit = function(code)
-                reply({ to = alua.id, status = "ok" })
-                _exit(code)
-             end 
+      reply({ to = alua.id, status = "ok" })
+      _exit(code)
+   end 
+   -- Execute the message
    local okay, e = pcall(obj)
+   okay = (okay and "ok") or "error"
    os.exit = _exit
-   reply({ to = alua.id, status = okay and "ok" or "error", error = e })
+   reply({ to = alua.id, status = okay, error = e })
 end
 
 -- issue commands to the daemon

@@ -174,7 +174,6 @@ local function daemon_link(s, context, arg, reply)
          daemons[v] = "ok"
       end
    end
-
    -- At least a connection fail -> return error
    if fail then
       if arg.exclude then
