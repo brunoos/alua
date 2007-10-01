@@ -1,4 +1,4 @@
-Welcome to the 5.0-Alpha release of ALua.
+Welcome to the 5.0 release of ALua.
 
 To install,  just the  alua.lua file and  the directory _alua  to your
 LUA_PATH.   However, apart  from  LuaSocket, there  are  now more  two
