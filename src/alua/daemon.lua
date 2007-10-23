@@ -101,9 +101,9 @@ end
 --
 local function evt_exists(msg, reply)
    if context.prc_getconn(msg.process) then
-      reply({status = "ok", daemon = alua.id})
+      reply({status = "ok", exists = true, daemon = alua.id})
    else
-      reply({status = "error", error = "not found"})
+      reply({status = "ok", exists = false})
    end
 end
 
@@ -163,10 +163,12 @@ context.events.daemon = {
 --
 function create(cfg, cb)
    -- Create a channel to wait the new daemon to connect to
-   local join = alua.channel.create("tcp:server", {addr = "127.0.0.1", port = 0})
+   local join = alua.channel.create("tcp:server", 
+      {addr = "127.0.0.1", port = 0})
    if not join then
       if cb then
-         alua.task.schedule(cb, {status = "error", error = "initialization error"})
+         alua.task.schedule(cb, {status = "error", 
+            error = "initialization error"})
       end
       return
    end
@@ -230,7 +232,8 @@ function launch(point)
    config.addr = join:receive("*l")
    config.port = tonumber(join:receive("*l"))
    -- Try to create the incoming connection for the processes
-   local serverconn, err = alua.channel.create("tcp:server", config, chn_handlers)
+   local serverconn, err = alua.channel.create("tcp:server", config, 
+      chn_handlers)
    if not serverconn then
       join:send("error\n")
       join:send(err .. "\n")

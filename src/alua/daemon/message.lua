@@ -30,7 +30,7 @@ local function resolve(msg, reply)
       -- Ambiguous resolution already detected, discarte all replies
       if ambiguous then
          return
-      elseif m.status == "ok" then
+      elseif m.status == "ok" and m.exists then
          if conn then
             ambiguous = true
             reply({status = "error", error = "ambiguous name resolution"})
