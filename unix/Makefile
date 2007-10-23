@@ -1,13 +1,8 @@
-#----------------------
-# Inform the location to intall the modules
-#
-
-# C modules
-CPATH=/usr/local/lua-5.1/modules/lib
+# Inform the location to intall the C module
+CPATH=/usr/local/lib/lua/5.1
 
 # Edit the line below to inform the Lua headers directory, if necessary
 #LUAINC=-I/usr/local/lua-5.1/include
-LUAINC=-I/home/brunoos/local/lua-5.1/include
 
 # For Mac OS X: set the system version
 MACOSX_VERSION=10.4
@@ -39,11 +34,10 @@ LDFLAGS=$(MYLDFLAGS)
 all: none
 
 none:
-	@echo "Usage: make {linux | bsd | macosx}"
+	@echo "Usage: make { linux | bsd | macosx }"
 
 install:
 	cp $(CMOD) $(CPATH)
-	cp $(LMOD) $(LPATH)
 
 linux:
 	@echo "Build for Linux"
