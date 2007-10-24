@@ -85,7 +85,7 @@ local function receive(conn)
 end
 
 --
--- Close an outcoming channel.
+-- Close an outgoing channel.
 --
 local function wrclose(conn)
    closed[conn] = true
@@ -139,9 +139,9 @@ function create(type, config, hdls)
 end
 
 --
--- Create a outcoming mailbox connection.
+-- Create a outgoing mailbox connection.
 --
-function outcoming(type, config, hdls)
+function outgoing(type, config, hdls)
    if not owner[config.name] then
       return nil, "mailbox not found"
    end

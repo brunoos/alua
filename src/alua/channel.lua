@@ -20,7 +20,7 @@ local constructors = {
    ["tcp:server"]  = tcp.server,
    ["tcp:client"]  = tcp.client,
    ["mailbox"]     = mailbox.create,
-   ["mailbox:out"] = mailbox.outcoming,
+   ["mailbox:out"] = mailbox.outgoing,
    ["mempair"]     = mempair.create,
 }
 
