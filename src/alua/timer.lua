@@ -7,7 +7,22 @@
 
 module("alua.timer", package.seeall)
 
-require("luatimer")
+-- Try to load the Luatimer package
+if not pcall(require, "luatimer") then
+
+-- Luatimer not found: define fake functions
+
+local function fake()
+   return nil, "Luatimer not found"
+end
+
+create = fake
+cancel = fake
+flush  = fake
+poll   = fake
+
+else
+-- Luatimer found: define real functions
 
 -- Save the commands for each timer.
 local commands = { }
@@ -19,7 +34,7 @@ local timers = luatimer.createpoll()
 --
 function create(freq, cmd)
    if not freq or not cmd then 
-      return nil 
+      return nil, "invalid arguments"
    end
    local t = timers:create(freq)
    commands[t] = cmd
@@ -53,3 +68,5 @@ function poll()
       end
    end
 end
+
+end  -- Luatimer require

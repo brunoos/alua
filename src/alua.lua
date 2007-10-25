@@ -8,7 +8,7 @@
 module("alua", package.seeall)
 
 require("alua.channel")
---require("alua.timer")
+require("alua.timer")
 require("alua.event")
 require("alua.daemon")
 require("alua.process")
@@ -54,7 +54,7 @@ end
 --
 function loop()
    while true do
-      --alua.timer.poll()
+      alua.timer.poll()
       alua.channel.poll()
    end
 end
