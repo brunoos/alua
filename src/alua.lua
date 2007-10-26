@@ -56,6 +56,16 @@ function open(cfg, cb)
 end
 
 --
+-- Close the connection with the daemon e exit.
+--
+function exit()
+   if _M.id then
+      close()
+      env.os.exit()
+   end
+end
+
+--
 -- Wait for events.
 --
 function loop()
