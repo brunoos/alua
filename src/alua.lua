@@ -58,11 +58,12 @@ end
 --
 -- Close the connection with the daemon e exit.
 --
-function exit()
-   if _M.id then
+function exit(dst, code, cb)
+   if not dst then
       close()
-      env.os.exit()
+      env.os.exit(code)
    end
+   send(dst, "alua.exit(nil, " .. env.tostring(code) .. ")", cb)
 end
 
 --
