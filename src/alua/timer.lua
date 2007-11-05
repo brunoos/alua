@@ -1,4 +1,4 @@
--- $Id: timer.lua 129 2007-05-12 19:27:34Z brunoos $
+-- $Id$
 --
 -- All rights reserved. Part of the ALua project.
 -- Detailed information regarding ALua's licence can be found 

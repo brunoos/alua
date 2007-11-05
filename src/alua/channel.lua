@@ -1,4 +1,4 @@
--- $Id: channel.lua 131 2007-05-27 17:43:24Z brunoos $
+-- $Id$
 --
 -- All rights reserved. Part of the ALua project.
 -- Detailed information regarding ALua's licence can be found 

@@ -1,4 +1,4 @@
--- $Id: event.lua 126 2007-05-12 05:35:42Z brunoos $
+-- $Id$
 --
 -- All rights reserved. Part of the ALua project.
 -- Detailed information regarding ALua's licence can be found 

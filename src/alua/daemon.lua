@@ -1,4 +1,4 @@
--- $Id: daemon.lua 135 2007-06-22 16:06:32Z brunoos $
+-- $Id$
 --
 -- All rights reserved. Part of the ALua project.
 -- Detailed information regarding ALua's licence can be found 
