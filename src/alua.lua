@@ -36,7 +36,7 @@ function open(cfg, cb)
    if env.type(cfg) == "string" then
       process.connect(cfg, cb)
    -- Create the daemon before to connect
-   elseif type(cfg) == "table" then
+   elseif env.type(cfg) == "table" then
       local reply = function(msg)
          if msg.status == "ok" then
             process.connect(msg.daemon, cb)
