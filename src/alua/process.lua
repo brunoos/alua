@@ -179,17 +179,32 @@ end
 
 --
 -- Send a message to be executed to the daemon.
+-- This function always send a table of processes to the daemon.
 --
 function send(dst, str, cb)
+   local newdst
    if not alua.id then
       if cb then
          alua.task.schedule(cb, {status = "error", error = "not connected"})
       end
       return
+   elseif dst == alua.id then
+      newdst = dst
+   elseif type(dst) == "string" then
+      newdst = { dst }
    elseif type(dst) == "table" then
+      if #dst == 0 then
+         if cb then
+            alua.task.schedule(cb, {
+               status = "error", 
+               error = "invalid destination"
+            })
+         end
+         return
+      end
       -- Remove duplicate destinations
       local tmp = { }
-      local newdst = { }
+      newdst = { }
       for k, v in ipairs(dst) do
          if type(v) ~= "string" then
             if cb then
@@ -204,8 +219,7 @@ function send(dst, str, cb)
             table.insert(newdst, v)
          end
       end
-      dst = newdst
-   elseif type(dst) ~= "string" then
+   else
       if cb then
          alua.task.schedule(cb, {
             status = "error", 
@@ -216,7 +230,7 @@ function send(dst, str, cb)
    end
    local msg = {
       src = alua.id,
-      dst = dst, 
+      dst = newdst, 
       data = str,
    }
    -- Avoid network communication. 
