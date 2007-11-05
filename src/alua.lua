@@ -15,7 +15,6 @@ module("alua")
 
 env.require("alua.channel")
 env.require("alua.timer")
-env.require("alua.event")
 env.require("alua.task")
 env.require("alua.daemon")
 env.require("alua.process")
@@ -26,6 +25,7 @@ send   = process.send
 link   = process.link
 close  = process.close
 spawn  = process.spawn
+exit   = process.exit
 
 --
 -- This function opens a connection with a daemon.
@@ -53,17 +53,6 @@ function open(cfg, cb)
              error = "invalid #1 argument"})
       end
    end
-end
-
---
--- Close the connection with the daemon e exit.
---
-function exit(dst, code, cb)
-   if not dst then
-      close()
-      env.os.exit(code)
-   end
-   send(dst, "alua.exit(nil, " .. env.tostring(code) .. ")", cb)
 end
 
 --

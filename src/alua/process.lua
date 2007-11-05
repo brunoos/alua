@@ -52,10 +52,19 @@ local chn_handlers = {
 ---------------------------------------------------------------------------
 
 --
+-- Save the current reply function in order to send back the process 
+-- termination. 
+-- See evt_message() and exit()
+--
+local currentreply
+
+--
 -- Handle the messages recept by the process.
 --
 local function evt_message(msg, reply)
+   currentreply = reply
    local succ, errmsg = dostring(msg.data)
+   currentreply = nil
    if not succ then
       reply({status = "error", error = errmsg})
    else
@@ -82,6 +91,17 @@ end
 ---------------------------------------------------------------------------
 --                             Process API
 ---------------------------------------------------------------------------
+
+--
+-- Terminate the current process. If it's a remote request, send back the
+-- confirmation before exit.
+--
+local function terminate(code)
+   if currentreply then
+      currentreply({status = "ok"})
+   end
+   os.exit(code)
+end
 
 --
 -- Connect to the daemon.
@@ -212,6 +232,62 @@ function send(dst, str, cb)
    else
       alua.event.send(alua.conn, "message", msg, cb)
    end
+end
+
+--
+-- Request the termination of the remote process(es).
+--
+function exit(dst, code, cb)
+   if type(dst) == "nil" or type(dst) == "number" then
+      terminate(dst)
+   elseif not alua.id then
+      if cb then
+         alua.task.schedule(cb, {status = "error", error = "not connected"})
+      end
+      return
+   elseif type(code) ~= "nil" and type(code) ~= "number" then
+      if cb then
+         alua.task.schedule(cb, {status = "error", error = "invalid code"})
+      end
+      return
+   elseif type(dst) == "table" then
+      if #dst == 0 then
+         if cb then
+            alua.task.schedule(cb, {
+               status = "error", 
+               error = "invalid destination"
+            })
+         end
+         return
+      end
+      -- Remove duplicate destinations
+      local tmp = { }
+      local newdst = { }
+      for k, v in ipairs(dst) do
+         if type(v) ~= "string" then
+            if cb then
+               alua.task.schedule(cb, {
+                  status = "error", 
+                  error = "invalid destination",
+               })
+            end
+            return
+         elseif not tmp[v] then
+            tmp[v] = true
+            table.insert(newdst, v)
+         end
+      end
+      dst = newdst
+   elseif type(dst) ~= "string" then
+      if cb then
+         task.schedule(cb, {
+            status = "error", 
+            error = "invalid destination",
+         })
+      end
+      return
+   end
+   send(dst, "alua.exit(" .. tostring(code) .. ")", cb)
 end
 
 --
