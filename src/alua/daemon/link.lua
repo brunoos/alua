@@ -43,6 +43,7 @@ function evt_link(msg, reply, conn)
    end
 
    -- State for deal with the replies
+   local errmsg
    local succ = true
    local count = 0
    local connections = { }
@@ -52,6 +53,7 @@ function evt_link(msg, reply, conn)
    local cb = function(m)
       if m.status == "error" then
          succ = false
+         errmsg = errmsg or m.error
       else
          -- Save the context
          local conn = connections[m.daemon]
@@ -75,20 +77,23 @@ function evt_link(msg, reply, conn)
                reply({status = "ok", daemons = msg.daemons})
             end
          else
-            reply({status = "error", error = "link error"})
+            errmsg = errmsg or string.format("[%s] link error", alua.id)
+            reply({ status = "error", error  = errmsg})
          end
       end
    end
 
    -- Open connection with the daemons and use the two function above to control
    -- the replies from the daemons.
+   local addr, port
    for k, v in ipairs(unknown) do
-      local addr, port = string.match(v, "^(%d+%.%d+%.%d+%.%d+):(%d+)$")
+      addr, port = string.match(v, "^(%d+%.%d+%.%d+%.%d+):(%d+)$")
       port = tonumber(port)
       local conn = alua.channel.create("tcp:client", 
          {addr = addr, port = port})
       if not conn then
          succ = false
+         errmsg = string.format("[%s] could not connect to %q", alua.id, v)
          break
       else
          -- Send the authentication request
@@ -100,6 +105,7 @@ function evt_link(msg, reply, conn)
    end
    -- No connection was opened
    if count == 0 then
-      reply({status = "error", error = "link error"})
+      errmsg = errmsg or string.format("[%s] link error", alua.id)
+      reply({status = "error", error = errmsg})
    end
 end
