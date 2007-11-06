@@ -162,9 +162,9 @@ context.events.daemon = {
 -- Create a new daemon, launching a new OS process.
 --
 function create(cfg, cb)
-   local conf = { }
-   conf.addr = (cfg and cfg.addr) or alua.config.addr
-   conf.port = (cfg and cfg.port) or alua.config.port
+   -- Save the configuration
+   local addr = cfg.addr
+   local port = cfg.port
    -- Create a channel to wait the new daemon to connect to
    local join = alua.channel.create("tcp:server", 
       {addr = "127.0.0.1", port = 0})
@@ -185,8 +185,8 @@ function create(cfg, cb)
             cb({status = "error", error = "connection error"})
          end
       else
-         conn:send(conf.addr .. "\n")
-         conn:send(tostring(conf.port) .. "\n")
+         conn:send(addr .. "\n")
+         conn:send(tostring(port) .. "\n")
          local reply = conn:receive("*l")
          local arg = conn:receive("*l")
          conn:close()
