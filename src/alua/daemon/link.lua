@@ -77,7 +77,6 @@ function evt_link(msg, reply, conn)
                reply({status = "ok", daemons = msg.daemons})
             end
          else
-            errmsg = errmsg or string.format("[%s] link error", alua.id)
             reply({ status = "error", error  = errmsg})
          end
       end
@@ -85,9 +84,8 @@ function evt_link(msg, reply, conn)
 
    -- Open connection with the daemons and use the two function above to control
    -- the replies from the daemons.
-   local addr, port
    for k, v in ipairs(unknown) do
-      addr, port = string.match(v, "^(%d+%.%d+%.%d+%.%d+):(%d+)$")
+      local addr, port = string.match(v, "^(%d+%.%d+%.%d+%.%d+):(%d+)$")
       port = tonumber(port)
       local conn = alua.channel.create("tcp:client", 
          {addr = addr, port = port})
@@ -105,7 +103,6 @@ function evt_link(msg, reply, conn)
    end
    -- No connection was opened
    if count == 0 then
-      errmsg = errmsg or string.format("[%s] link error", alua.id)
       reply({status = "error", error = errmsg})
    end
 end

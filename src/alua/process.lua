@@ -312,7 +312,7 @@ function link(daemons, cb)
    if not alua.id then
       err = "not connected"
    elseif type(daemons) ~= "table" or #daemons == 0 then
-      err = "invalid arguments"
+      err = "invalid daemons list"
    end
    if err then
       if cb then
@@ -331,7 +331,7 @@ function link(daemons, cb)
       if not tmp[v] then
          -- Verify if it is a valid identification
          local addr, port = string.match(v, "^(%d+%.%d+%.%d+%.%d+):(%d+)$")
-         if not addr or not port then
+         if not addr then
             if cb then
                alua.task.schedule(cb, {
                   status = "error", 
@@ -340,12 +340,20 @@ function link(daemons, cb)
             end
             return
          end
-         port = tonumber(port)
          tmp[v] = true
          table.insert(list, v)
       end
    end
-      
+   -- Check if there are more daemons after the clean up
+   if #list == 1 then
+      if cb then
+         alua.task.schedule(cb, {
+            status = "error", 
+            error = "invalid daemons list",
+         })
+      end
+      return      
+   end
    -- Link was done, request the next daemon to make the links
    local arg = { daemons = list, next = 1 }
    alua.event.send(alua.conn, "link", arg, cb)
