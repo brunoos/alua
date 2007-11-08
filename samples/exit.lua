@@ -1,22 +1,27 @@
--- public domain
-alua = require("alua")
+require("alua")
 
-function
-exit_callback(reply)
-	print("reply table is: " .. _alua.utils.dump(reply))
-	alua.exit()
+function exitcb(reply)
+   for k, v in pairs(reply) do 
+      print("-> " .. k)
+      for i, j in pairs(v) do
+         print("   " .. i .. " = " .. j)
+      end
+   end
+   alua.exit()
 end
 
-function
-spawn_callback(reply)
-	local procs = {}
- 	for proc in pairs(reply.processes) do
-		table.insert(procs, proc)
-	end
-	print("sending exist request...")
-	alua.exit(procs, 0, exit_callback)
+function spawncb(reply)
+   local procs = {}
+   for proc in pairs(reply.processes) do
+      table.insert(procs, proc)
+   end
+   print("Sending exist request...")
+   alua.exit(procs, 0, exitcb)
 end
 
-alua.open()
-alua.spawn(4, spawn_callback)
+function opencb(reply)
+   alua.spawn(4, spawncb)
+end
+
+alua.open({addr="127.0.0.1", port=6080}, opencb)
 alua.loop()

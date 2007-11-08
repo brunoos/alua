@@ -1,13 +1,15 @@
-alua = require("alua")
+require("alua")
 
-function
-spawn_callback(reply)
-	local cmd = [[ print("Hello from " .. alua.id .. "!"); alua.exit() ]]
-	for p in pairs(reply.processes) do
-		alua.send(p, cmd)
-	end
+function spawncb(reply)
+   local cmd = [[ print("Hello from " .. alua.id .. "!"); alua.exit() ]]
+   for p in pairs(reply.processes) do
+      alua.send(p, cmd)
+   end
 end
 
-alua.open()
-alua.spawn(7, spawn_callback)
+function opencb(reply)
+   alua.spawn(7, spawncb)
+end
+
+alua.open({addr="127.0.0.1", port=6080}, opencb)
 alua.loop()
