@@ -107,7 +107,7 @@ end
 --
 -- Send a message to an array of processes/daemons.
 --
-function evt_message(msg, reply, from)
+local function multicast(msg, reply, from)
    -- Keep track of each name and it reply using closures
    local resp = { }
    local nresp = #msg.dst
@@ -124,5 +124,18 @@ function evt_message(msg, reply, from)
       end
       msg.dst = v
       unicast(msg, cb, from)
+   end
+end
+
+--
+-- Send a message to other process or daemon.
+--
+function evt_message(msg, reply, from)
+   if type(msg.dst) == "string" then
+      unicast(msg, reply, from)
+   elseif type(msg.dst) == "table" then
+      multicast(msg, reply, from)
+   else
+      reply({status = "error", error = "invalid request"})
    end
 end

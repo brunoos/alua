@@ -179,7 +179,6 @@ end
 
 --
 -- Send a message to be executed to the daemon.
--- This function always send a table of processes to the daemon.
 --
 function send(dst, str, cb)
    local newdst
@@ -188,10 +187,6 @@ function send(dst, str, cb)
          alua.task.schedule(cb, {status = "error", error = "not connected"})
       end
       return
-   elseif dst == alua.id then
-      newdst = dst
-   elseif type(dst) == "string" then
-      newdst = { dst }
    elseif type(dst) == "table" then
       if #dst == 0 then
          if cb then
@@ -219,6 +214,10 @@ function send(dst, str, cb)
             table.insert(newdst, v)
          end
       end
+   elseif type(dst) == "string" then
+      -- If we send a table instead a string to daemon, we received back 
+      -- the reply formated appropriately.
+      newdst = {dst}
    else
       if cb then
          alua.task.schedule(cb, {
@@ -230,7 +229,6 @@ function send(dst, str, cb)
    end
    local msg = {
       src = alua.id,
-      dst = newdst, 
       data = str,
    }
    -- Avoid network communication. 
@@ -242,8 +240,10 @@ function send(dst, str, cb)
             cb(data)
          end
       end
+      msg.dst = dst
       alua.task.schedule(evt_message, msg, reply)
    else
+      msg.dst = newdst
       alua.event.send(alua.conn, "message", msg, cb)
    end
 end
