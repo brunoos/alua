@@ -33,13 +33,21 @@ require("alua.channel")
 require("alua.task")
 require("alua.event")
 
+
+-- Save the current reply function in order to send back the process 
+-- termination. See evt_message() and exit().
+local currentreply
+
+-- Connection with the daemon
+local dmconn
+
 ---------------------------------------------------------------------------
 --                  Low-level events (channel events)
 ---------------------------------------------------------------------------
 
 local function chn_close()
+   dmconn = nil
    alua.id = nil
-   alua.conn = nil
    alua.daemonid = nil
 end
 
@@ -50,13 +58,6 @@ local chn_handlers = {
 ---------------------------------------------------------------------------
 --                           High-level events
 ---------------------------------------------------------------------------
-
---
--- Save the current reply function in order to send back the process 
--- termination. 
--- See evt_message() and exit()
---
-local currentreply
 
 --
 -- Handle the messages recept by the process.
@@ -84,8 +85,8 @@ local evt_handlers = {
 -- The daemon use this function to set the internal connection with itself.
 --
 function setconn(conn)
-   alua.conn = conn
-   alua.event.listen(alua.conn, evt_handlers)
+   dmconn = conn
+   alua.event.listen(dmconn, evt_handlers)
 end
 
 ---------------------------------------------------------------------------
@@ -131,12 +132,12 @@ function connect(str, cb)
       local reply = function(msg)
          -- Save the id received from the daemon ...
          if msg.status == "ok" then
+            dmconn = conn
             alua.id = msg.id
-            alua.conn = conn
             alua.daemonid = msg.daemon
             -- Set the events
             for name, hdl in pairs(evt_handlers) do
-               alua.event.add(alua.conn, name, hdl)
+               alua.event.add(dmconn, name, hdl)
             end
          else
             -- ... or close the connection if the authentication fail
@@ -167,10 +168,10 @@ function close()
    -- Daemon cannot close a connection with itself
    -- Remark: a daemon has the same value to the fields 'id' and 'daemonid'
    if alua.id ~= alua.daemonid then
-      alua.event.send(alua.conn, "close", {mode = "client"})
-      alua.conn:close()
+      alua.event.send(dmconn, "close", {mode = "client"})
+      dmconn:close()
+      dmconn = nil
       alua.id = nil
-      alua.conn = nil
       alua.daemonid = nil
       return true
    end
@@ -244,7 +245,7 @@ function send(dst, str, cb)
       alua.task.schedule(evt_message, msg, reply)
    else
       msg.dst = newdst
-      alua.event.send(alua.conn, "message", msg, cb)
+      alua.event.send(dmconn, "message", msg, cb)
    end
 end
 
@@ -356,7 +357,7 @@ function link(daemons, cb)
    end
    -- Link was done, request the next daemon to make the links
    local arg = { daemons = list, next = 1 }
-   alua.event.send(alua.conn, "link", arg, cb)
+   alua.event.send(dmconn, "link", arg, cb)
 end
 
 
@@ -379,7 +380,7 @@ local function spawnbyname(param, cb)
       tb[v] = true
       req[k] = v
    end
-   alua.event.send(alua.conn, "spawn", {names = req}, cb)
+   alua.event.send(dmconn, "spawn", {names = req}, cb)
 end
 
 --
@@ -414,7 +415,7 @@ local function spawnbydaemon(param, cb)
          end
       end
    end
-   alua.event.send(alua.conn, "spawn", {daemons = req}, cb)
+   alua.event.send(dmconn, "spawn", {daemons = req}, cb)
 end
 
 --
@@ -426,7 +427,7 @@ function spawn(param, cb)
       return
    end
    if type(param) == "number" then
-      alua.event.send(alua.conn, "spawn", {count = param}, cb)
+      alua.event.send(dmconn, "spawn", {count = param}, cb)
    elseif type(param) == "table" then
       -- Maybe an array of names
       if param[1] then
@@ -455,11 +456,11 @@ function launch(cfg)
       local reply = function(msg)
          -- Save the id received from the daemon ...
          if msg.status == "ok" then
+            dmconn = conn
             alua.id = msg.id
-            alua.conn = conn
             alua.daemonid = msg.daemon
             -- Set the events
-            alua.event.add(alua.conn, evt_handlers)
+            alua.event.add(dmconn, evt_handlers)
          else
             -- ... or close the connection if the authentication fail
             conn:close()
