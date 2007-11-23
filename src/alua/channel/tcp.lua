@@ -65,11 +65,27 @@ local function sethandler(conn, name, hdl)
    handlers[name][conn] = hdl
    -- Update information to socket.select()
    if getmetatable(conn) ~= metaclosed then
-      if name == "write" then
-         listen.write:put(socks[conn], conn)
+      if hdl then
+         if name == "write" then
+            listen.write:put(socks[conn], conn)
+         else
+            -- Handlers: read, close, and accept
+            listen.read:put(socks[conn], conn)
+         end
       else
-         listen.read:put(socks[conn], conn)
-      end
+         -- The handler is 'nil', remove the socket
+         if name == "write" then
+            listen.write:remove(socks[conn])
+         else
+            -- Remove only if there are no handlers
+            if not (handlers.read[conn] or
+                    handlers.close[conn] or 
+                    handlers.accept[conn]) 
+            then
+               listen.read:remove(socks[conn])
+            end
+         end
+      end         
    end
 end
 
