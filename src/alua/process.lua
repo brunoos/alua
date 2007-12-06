@@ -101,6 +101,7 @@ local function terminate(code)
    if currentreply then
       currentreply({status = "ok"})
    end
+   close()
    os.exit(code)
 end
 
