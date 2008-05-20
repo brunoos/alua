@@ -1,8 +1,8 @@
 -- $Id$
 --
 -- All rights reserved. Part of the ALua project.
--- Detailed information regarding ALua's licence can be found 
--- in the LICENCE file.
+-- Detailed information regarding ALua's license can be found 
+-- in the LICENSE file.
 --
 
 module("alua.channel.tcp", package.seeall)
