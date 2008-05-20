@@ -1,4 +1,4 @@
- ALua 5.0
+ ALua 6.0
 ---------
 
 ALua  is  developed almost  all  in Lua  language,  with  a small  and
@@ -11,12 +11,12 @@ To install the Lua part
     directory,  to some place in your LUA_PATH.
 
 To install the C part
-  (i) on Linux, *BSD or Mac OS X
+  (i) on Linux, BSD, or Mac OS X
     * Enter the 'unix' directory
     * Edit 'Makefile' accordingly
     * Use the 'make' command to build the library, as follows
-      - make linux    , or
-      - make bsd      , or
+      - make linux        , or
+      - make bsd          , or
       - make macosx
     * Install the 'alua.so' library using the command 'make install' or
       copy manually the file to some place in your LUA_CPATH.
@@ -30,12 +30,12 @@ To install the C part
       the 'alua.dll' library.
     * Copy this library to some place in you LUA_CPATH.
 
-LuaSocket 2.0.1
+LuaSocket 2.0.2
 ---------------
 Please visit the official site 
   * http://luaforge.net/projects/luasocket/
 
-LuaTimer 1.1
+LuaTimer 2.0
 ------------
 This is an optinal package that can be integrated with ALua.
 Download it from
