@@ -321,7 +321,6 @@ metaserver.__index = {
    close = close,
    gethandler = gethandler,
    sethandler = sethandler,
-   settimeout = settimeout,
 }
 metaserver.__tostring = function() 
    return "TCP channel (server)" 
