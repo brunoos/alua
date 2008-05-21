@@ -39,13 +39,6 @@ function load(chunk)
 end
 
 --
--- Verify if the type can be serialized.
---
-local function isserializable(t)
-   return (t ~= "thread" and t ~= "userdata" and t ~= "function")
-end
-
---
 -- Auxiliary function used to dump a Lua object.
 -- This function does not serialize circular references in table,
 -- it accepts only plain tables (tree).
@@ -53,7 +46,7 @@ end
 function dump(obj)
    -- Verify the object type
    local tobj = type(obj)
-   if not isserializable(tobj) then
+   if tobj == "thread" or tobj == "userdata" or tobj == "function" then
       return ""
    end
 
@@ -64,7 +57,8 @@ function dump(obj)
          local sk, sv
          local tk = type(k)
          local tv = type(v)
-         if isserializable(tk) and isserializable(tv) then
+	 if (tk ~= "thread" and tk ~= "userdata" and tk ~= "function") and
+            (tv ~= "thread" and tv ~= "userdata" and tv ~= "function") then
             buf = buf .. string.format("[%s] = %s,", dump(k), dump(v))
          end
       end
