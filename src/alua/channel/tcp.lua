@@ -107,7 +107,6 @@ end
 
 --
 -- Send the data.
--- TODO: detect closed connection and notify 'close' event.
 --
 local function send(conn, data)
    return socks[conn]:send(data)
@@ -115,10 +114,16 @@ end
 
 --
 -- Receive bytes from the connection.
--- TODO: detect closed connection and notify 'close' event.
 --
 local function receive(conn, patt)
    return socks[conn]:receive(patt)
+end
+
+--
+-- Set the socket timeout.
+--
+local function settimeout(conn, value, mode)
+   socks[conn]:settimeout(value, mode)
 end
 
 --
@@ -293,6 +298,7 @@ metaclosed.__index = {
    close = opclosed,
    gethandler = gethandler,
    sethandler = sethandler,
+   settimeout = opclosed,
    closed = true,
 }
 metaclosed.__tostring = function() 
@@ -305,6 +311,7 @@ metaclient.__index = {
    close = close,
    gethandler = gethandler,
    sethandler = sethandler,
+   settimeout = settimeout,
 }
 metaclient.__tostring = function() 
    return "TCP channel (client)" 
@@ -314,6 +321,7 @@ metaserver.__index = {
    close = close,
    gethandler = gethandler,
    sethandler = sethandler,
+   settimeout = settimeout,
 }
 metaserver.__tostring = function() 
    return "TCP channel (server)" 
