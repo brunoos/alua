@@ -18,14 +18,16 @@ env.require("alua.timer")
 env.require("alua.task")
 env.require("alua.daemon")
 env.require("alua.process")
+env.require("alua.codec")
 
 -- Export some functions
-create = daemon.create
-send   = process.send
-link   = process.link
-close  = process.close
-spawn  = process.spawn
-exit   = process.exit
+create   = daemon.create
+send     = process.send
+link     = process.link
+close    = process.close
+spawn    = process.spawn
+exit     = process.exit
+tostring = codec.dump
 
 --
 -- This function opens a connection with a daemon.
