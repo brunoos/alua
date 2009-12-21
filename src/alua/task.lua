@@ -13,10 +13,14 @@ require("alua.channel")
 local tasks
 
 local function dispatch()
+   local tmp = {}
    local t = tasks:receive()
    while t do
-      t.func(unpack(t.args))
+      tmp[#tmp+1] = t
       t = tasks:receive()
+   end
+   for _, t in ipairs(tmp) do
+     t.func(unpack(t.args))
    end
 end
 
